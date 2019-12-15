@@ -25,7 +25,7 @@ Comparison::Factory Comparison::_factory;
 
 unsigned Comparison::rxp_group_count() const { return 0; }
 
-Errata Comparison::define(swoc::TextView name, ValueMask const& types, Comparison::Worker &&worker) {
+Errata Comparison::define(swoc::TextView name, ValueMask const& types, Comparison::Loader &&worker) {
   _factory[name] = std::make_tuple(std::move(worker), types);
   return {};
 }
@@ -33,18 +33,22 @@ Errata Comparison::define(swoc::TextView name, ValueMask const& types, Compariso
 Rv<Comparison::Handle> Comparison::load(Config & cfg, ValueType ftype, YAML::Node node) {
   for ( auto const& [ key_node, value_node ] : node ) {
     TextView key { key_node.Scalar() };
+    auto && [ arg, arg_errata ] { parse_arg(key) };
+    if (!arg_errata.is_ok()) {
+      return std::move(arg_errata);
+    }
     if (key == Directive::DO_KEY) {
       continue;
     }
     // See if this is in the factory. It's not an error if it's not, to enable adding extra
     // keys to comparison. First key that is in the factory determines the comparison type.
     if ( auto spot { _factory.find(key) } ; spot != _factory.end()) {
-      auto &&[worker, types] = spot->second;
+      auto &&[loader, types] = spot->second;
       if (! types[IndexFor(ftype)]) {
         return Error(R"(Comparison "{}" at {} is not valid for a feature of type "{}".)", key, node.Mark(), ftype);
       }
 
-      auto &&[handle, errata]{worker(cfg, node, value_node)};
+      auto &&[handle, errata]{loader(cfg, node, key, arg, value_node)};
 
       if (!errata.is_ok()) {
         return std::move(errata);
@@ -63,14 +67,19 @@ class StringComparison: public Comparison {
   using self_type = StringComparison; ///< Self reference type.
   using super_type = Comparison; ///< Parent type.
 public:
+  static constexpr TextView NO_CASE_OPT { "nc" };
+  static constexpr TextView REGEX_OPT { "rx" };
   /// Mark for @c STRING support only.
   static const ValueMask TYPES;
 
 protected:
-  Extractor::Format _exfmt; ///< String for comparison.
+  Extractor::Format _value; ///< Single value for comparison.
+  std::vector<Extractor::Format> _list; ///< List of values for comparison.
+  bool _nc_p = false; ///< Case insensitive compare
+  bool _rx_p = false; ///< Regular expression compare.
 
   /// Load up the string, accounting for extraction and types.
-  static Rv<Extractor::Format> load_exfmt(Config& cfg, YAML::Node cmp_node, YAML::Node key_node, std::string const& KEY);
+  Errata load_exfmt(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node;
 
   /// Internal constructor used by @c load.
   explicit StringComparison(Extractor::Format && exf);
@@ -78,22 +87,34 @@ protected:
 
 const ValueMask StringComparison::TYPES { MaskFor(ValueType::STRING) };
 
-StringComparison::StringComparison(Extractor::Format &&exf) : _exfmt(std::move(exf)) {}
+StringComparison::StringComparison(Extractor::Format &&exf) : _value(std::move(exf)) {}
 
-Rv<Extractor::Format> StringComparison::load_exfmt(Config &cfg, YAML::Node cmp_node, YAML::Node key_node, std::string const& KEY) {
-  auto &&[exfmt, errata]{cfg.parse_feature(key_node)};
+Errata StringComparison::load_exfmt(Config &cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
+  auto &&[exfmt, errata]{cfg.parse_feature(value_node)};
 
   if (!errata.is_ok()) {
-    errata.info(R"(While parsing comparison "{}" at {}.)", KEY, cmp_node.Mark());
+    errata.info(R"(While parsing comparison "{}" at {}.)", key, cmp_node.Mark());
     return std::move(errata);
   }
 
   if (!TYPES[IndexFor(exfmt._result_type)]) {
     errata.error(R"(Value type "{}" for comparison "{}" at {} is not supported.)"
-                 , exfmt._result_type, KEY, cmp_node.Mark());
+                 , exfmt._result_type, key, cmp_node.Mark());
     return std::move(errata);
   }
-  return std::move(exfmt);
+
+  auto options = arg;
+  while (options) {
+    auto token = options.take_prefix_at(',');
+    if (NO_CASE_OPT == token) {
+      _nc_p = true;
+    } else if (REGEX_OPT == token) {
+      _rx_p = true;
+    } else {
+      return Error(R"("{}" is not a valid option for comparison "{}".)", token, key);
+    }
+  }
+  return {};
 }
 
 /* ------------------------------------------------------------------------------------ */
@@ -112,7 +133,7 @@ public:
    * @param key_node The node in @a cmp_node that identified this comparison.
    * @return An instance or errors on failure.
    */
-  static Rv<Handle> load(Config& cfg, YAML::Node cmp_node, YAML::Node key_node);
+  static Rv<Handle> load(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node key_node);
 
   /** Compare @a text for a match.
    *
@@ -129,11 +150,11 @@ protected:
 const std::string Cmp_Match::KEY { "match" };
 
 bool Cmp_Match::operator()(Context& ctx, FeatureView& text) const {
-  Feature feature { ctx.extract(_exfmt) };
+  Feature feature { ctx.extract(_value) };
   return text == std::get<STRING>(feature);
 }
 
-Rv<Comparison::Handle> Cmp_Match::load(Config& cfg, YAML::Node cmp_node, YAML::Node key_node) {
+Rv<Comparison::Handle> Cmp_Match::load(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node key_node) {
   auto && [ exfmt, errata ] { super_type::load_exfmt(cfg, cmp_node, key_node, KEY) };
   if (! errata.is_ok()) {
     return { {}, std::move(errata) };
@@ -175,7 +196,7 @@ protected:
 const std::string Cmp_MatchNocase::KEY { "match-nocase" };
 
 bool Cmp_MatchNocase::operator()(Context& ctx, FeatureView& text) const {
-  Feature feature { ctx.extract(_exfmt) };
+  Feature feature { ctx.extract(_value) };
   return 0 == strcasecmp(text, std::get<STRING>(feature));
 }
 
@@ -211,7 +232,7 @@ protected:
 const std::string Cmp_Suffix::KEY { "suffix" };
 
 bool Cmp_Suffix::operator()(Context &ctx, FeatureView &text) const {
-  Feature feature { ctx.extract(_exfmt) };
+  Feature feature { ctx.extract(_value) };
   return text.ends_with(std::get<IndexFor(STRING)>(feature));
 }
 
@@ -247,7 +268,7 @@ protected:
 const std::string Cmp_SuffixNocase::KEY { "suffix-nocase" };
 
 bool Cmp_SuffixNocase::operator()(Context &ctx, FeatureView &text) const {
-  Feature feature { ctx.extract(_exfmt) };
+  Feature feature { ctx.extract(_value) };
   return text.ends_with_nocase(std::get<IndexFor(STRING)>(feature));
 }
 
@@ -283,7 +304,7 @@ protected:
 const std::string Cmp_Prefix::KEY { "prefix" };
 
 bool Cmp_Prefix::operator()(Context &ctx, FeatureView &text) const {
-  Feature feature { ctx.extract(_exfmt) };
+  Feature feature { ctx.extract(_value) };
   return text.starts_with(std::get<IndexFor(STRING)>(feature));
 }
 
@@ -319,7 +340,7 @@ protected:
 const std::string Cmp_PrefixNocase::KEY { "prefix-nocase" };
 
 bool Cmp_PrefixNocase::operator()(Context &ctx, FeatureView &text) const {
-  Feature feature { ctx.extract(_exfmt) };
+  Feature feature { ctx.extract(_value) };
   return text.starts_with_nocase(std::get<IndexFor(STRING)>(feature));
 }
 

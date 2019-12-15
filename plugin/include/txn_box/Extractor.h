@@ -45,7 +45,7 @@ public:
     swoc::MemSpan<void> _data;
   };
 
-  /// Parsed extractor string.
+  /// Parsed feature string.
   class Format {
     using self_type = Format; ///< Self reference type.
   public:
@@ -124,7 +124,7 @@ public:
      *
      * @return A view of the literal.
      *
-     * This returns a valid result iff @a this->is_literal() is @c true.
+     * Valid iff @a this->is_literal() is @c true.
      */
     swoc::TextView literal() const;
   };

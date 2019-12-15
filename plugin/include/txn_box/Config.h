@@ -22,6 +22,13 @@
 using TSCont = struct tsapi_cont *;
 using TSHttpTxn = struct tsapi_httptxn *;
 
+/// Result from looking at node structure for a value node.
+enum class FeatureNodeStyle {
+  INVALID, ///< The nodes are not structured as a valie feature.
+  SINGLE, ///< Structure is suitable for a single feature.
+  TUPLE, ///< Structure is suitable for a list of features.
+};
+
 /// Contains a configuration and configuration helper methods.
 /// This is also used to pass information between node parsing during configuration loading.
 class Config {
@@ -108,6 +115,16 @@ public:
    * @a state provides information on feature provision.
    */
   swoc::Rv<Directive::Handle> parse_directive(YAML::Node const& drtv_node, FeatureRefState& state);
+
+  /** Check the node structure of a value.
+   *
+   * @param value Value node to check.
+   * @return The type of feature represented by @a value.
+   *
+   * Primarily this checks @a value to see if it's a valid feature, and whether it's single or
+   * multiple.
+   */
+  FeatureNodeStyle feature_node_style(YAML::Node value);
 
   /** Parse a node as a feature extractor.
    *
@@ -233,7 +250,7 @@ protected:
   /// Directive info for all directive types.
   std::vector<Directive::CfgInfo> _drtv_info;
 
-  /// A factory that maps from directive names to generator functions (@c Worker instances).
+  /// A factory that maps from directive names to generator functions (@c Loader instances).
   using Factory = std::unordered_map<std::string_view, std::tuple<HookMask, Directive::Worker, Directive::StaticInfo>>;
 
   /// The set of defined directives..

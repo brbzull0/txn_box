@@ -147,6 +147,18 @@ Config& Config::localize(Extractor::Format &fmt) {
   return *this;
 }
 
+FeatureNodeStyle Config::feature_node_style(YAML::Node value) {
+  if (value.IsScalar()) {
+    return FeatureNodeStyle::SINGLE;
+  }
+  if (value.IsSequence()) {
+    if (value.size() == 0) {
+      return FeatureNodeStyle::SINGLE;
+    }
+  }
+  return FeatureNodeStyle::INVALID;
+}
+
 Rv<Extractor::Format> Config::parse_feature(YAML::Node fmt_node, StrType str_type) {
   // Unfortunately, lots of special cases here.
 
