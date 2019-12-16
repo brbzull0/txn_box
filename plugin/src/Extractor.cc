@@ -48,8 +48,8 @@ Feature cdr(Feature const& feature) {
   return NIL_FEATURE; // No cdr unless explicitly supported.
 }
 /* ------------------------------------------------------------------------------------ */
-Extractor::Format Extractor::literal(feature_type_for<NIL> nil) {
-  Format fmt;
+Extractor::Expr Extractor::literal(feature_type_for<NIL> nil) {
+  Expr fmt;
   fmt._literal_p = true;
   fmt._direct_p = false;
   fmt._result_type = NIL;
@@ -58,8 +58,8 @@ Extractor::Format Extractor::literal(feature_type_for<NIL> nil) {
 }
 
 
-Extractor::Format Extractor::literal(TextView text) {
-  Format fmt;
+Extractor::Expr Extractor::literal(TextView text) {
+  Expr fmt;
   fmt._literal_p = true;
   fmt._direct_p = false;
   fmt._literal = text;
@@ -67,8 +67,8 @@ Extractor::Format Extractor::literal(TextView text) {
   return std::move(fmt);
 }
 
-Extractor::Format Extractor::literal(feature_type_for<INTEGER> n) {
-  Format fmt;
+Extractor::Expr Extractor::literal(feature_type_for<INTEGER> n) {
+  Expr fmt;
   fmt._literal_p = true;
   fmt._direct_p = false;
   fmt._literal = n;
@@ -76,8 +76,8 @@ Extractor::Format Extractor::literal(feature_type_for<INTEGER> n) {
   return std::move(fmt);
 }
 
-Extractor::Format Extractor::literal(feature_type_for<IP_ADDR> const& addr) {
-  Format fmt;
+Extractor::Expr Extractor::literal(feature_type_for<IP_ADDR> const& addr) {
+  Expr fmt;
   fmt._literal_p = true;
   fmt._direct_p = false;
   fmt._literal = addr;
@@ -111,7 +111,7 @@ Errata Extractor::update_extractor(Config & cfg, Spec &spec) {
   return {};
 }
 
-Rv<Extractor::Format> Extractor::parse_raw(Config &cfg, TextView text) {
+Rv<Extractor::Expr> Extractor::parse_raw(Config &cfg, TextView text) {
   // Check for specific types of literals
 
   // Empty string?
@@ -149,16 +149,16 @@ Rv<Extractor::Format> Extractor::parse_raw(Config &cfg, TextView text) {
     return std::move(errata);
   }
 
-  Format fmt;
+  Expr fmt;
   fmt.push_back(spec);
   fmt._direct_p = spec._exf->is_direct();
   fmt._result_type = spec._exf->result_type();
   return std::move(fmt);
 }
 
-Rv<Extractor::Format> Extractor::parse(Config &cfg, TextView format_string) {
+Rv<Extractor::Expr> Extractor::parse(Config &cfg, TextView format_string) {
   auto parser { swoc::bwf::Format::bind(format_string) };
-  Format fmt;
+  Expr fmt;
   Errata zret;
   // Used to handle literals in @a format_string. Can't be const because it must be updated
   // for each literal.
@@ -206,7 +206,7 @@ bool Extractor::has_ctx_ref() const { return false; }
 
 /* ------------------------------------------------------------------------------------ */
 
-Extractor::Format::self_type & Extractor::Format::push_back(Extractor::Spec const &spec) {
+Extractor::Expr::self_type & Extractor::Expr::push_back(Extractor::Spec const &spec) {
   _specs.push_back(spec);
   // update properties.
   if (spec._type != swoc::bwf::Spec::LITERAL_TYPE) {
@@ -391,7 +391,7 @@ Errata FeatureGroup::load(Config & cfg, YAML::Node const& node, std::initializer
       dst._ex = ExfInfo::Multi{};
       ExfInfo::Multi & m = std::get<ExfInfo::MULTI>(dst._ex);
       m._fmt.reserve(src._fmt_count);
-      for ( auto & fmt : MemSpan<Extractor::Format>{ &tracking._fmt_array[src._fmt_idx], src._fmt_count } ) {
+      for ( auto & fmt : MemSpan<Extractor::Expr>{&tracking._fmt_array[src._fmt_idx], src._fmt_count } ) {
         m._fmt.emplace_back(std::move(fmt));
       }
     } else {

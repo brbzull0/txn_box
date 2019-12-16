@@ -89,7 +89,7 @@ public:
    *
    * @see commit
    */
-  Feature extract(Extractor::Format const& fmt);
+  Feature extract(Extractor::Expr const& fmt);
 
   /** Commit a feature.
    *

@@ -17,7 +17,7 @@
 
 #include "txn_box/Directive.h"
 #include "txn_box/Extractor.h"
-#include "txn_box/FeatureMod.h"
+#include "txn_box/Modifier.h"
 #include "txn_box/Config.h"
 #include "txn_box/Context.h"
 
@@ -107,7 +107,7 @@ std::string_view & Config::localize(std::string_view & text) {
   return text = span.view();
 };
 
-Config& Config::localize(Extractor::Format &fmt) {
+Config& Config::localize(Extractor::Expr &fmt) {
   if (fmt._literal_p) {
     // Special case a "pure" literal - it's a format but all of the specifiers are literals.
     // This can be consolidated into a "normal" STRING literal for the format. This is only way
@@ -159,11 +159,12 @@ FeatureNodeStyle Config::feature_node_style(YAML::Node value) {
   return FeatureNodeStyle::INVALID;
 }
 
-Rv<Extractor::Format> Config::parse_feature(YAML::Node fmt_node, StrType str_type) {
+Rv<Extractor::Expr> Config::parse_feature(YAML::Node fmt_node, StrType str_type) {
   // Unfortunately, lots of special cases here.
 
+  std::string_view fmt_tag(fmt_node.Tag());
   // If explicitly marked a literal, then no further processing should be done.
-  if (0 == strcasecmp(fmt_node.Tag(), LITERAL_TAG)) {
+  if (0 == strcasecmp(fmt_tag, LITERAL_TAG)) {
     if (!fmt_node.IsScalar()) {
       return Error(R"("!{}" tag used on value at {} which is not a string as required for a literal.)", LITERAL_TAG, fmt_node.Mark());
     }
@@ -172,14 +173,15 @@ Rv<Extractor::Format> Config::parse_feature(YAML::Node fmt_node, StrType str_typ
       return Extractor::literal(TextView{text.c_str(), text.size() + 1});
     }
     return Extractor::literal(TextView{text.data(), text.size()});
-
+  } else if (0 != strcasecmp(fmt_tag, "?"_sv) && 0 != strcasecmp(fmt_tag, "!"_sv)) {
+    return Error(R"("{}" tag for extractor expression is not supported.)", fmt_tag);
   }
 
   if (fmt_node.IsNull()) { // explicit NULL
     return Extractor::literal(feature_type_for<NIL>{}); // Treat as equivalent of the empty string.
   } else if (fmt_node.IsScalar()) {
     // Scalar case - is is quotes, forcing a string?
-    Rv<Extractor::Format> result;
+    Rv<Extractor::Expr> result;
     TextView text { fmt_node.Scalar() };
     if (text.empty()) { // no value at all
       result = Extractor::literal(""_tv); // if used, act like an empty string.
@@ -233,7 +235,7 @@ Rv<Extractor::Format> Config::parse_feature(YAML::Node fmt_node, StrType str_typ
 
     for ( unsigned idx = 1 ; idx < fmt_node.size() ; ++idx ) {
       auto child { fmt_node[idx] };
-      auto && [ mod, mod_errata ] { FeatureMod::load(*this, child, fmt._result_type) };
+      auto && [ mod, mod_errata ] {Modifier::load(*this, child, fmt._result_type) };
       if (! mod_errata.is_ok()) {
         mod_errata.info(R"(While parsing modifier {} in modified string at {}.)", child.Mark(), fmt_node.Mark());
         return { {}, std::move(mod_errata) };

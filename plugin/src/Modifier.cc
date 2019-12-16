@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "txn_box/FeatureMod.h"
+#include "txn_box/Modifier.h"
 #include "txn_box/Context.h"
 #include "txn_box/Config.h"
 #include "txn_box/yaml_util.h"
@@ -15,9 +15,9 @@ using swoc::Rv;
 using namespace swoc::literals;
 
 /// Static mapping from modifer to factory.
-FeatureMod::Factory FeatureMod::_factory;
+Modifier::Factory Modifier::_factory;
 
-Errata FeatureMod::define(swoc::TextView name, FeatureMod::Worker const &f) {
+Errata Modifier::define(swoc::TextView name, Modifier::Worker const &f) {
   if (auto spot = _factory.find(name) ; spot != _factory.end()) {
     _factory.insert(spot, {name, f});
     return {};
@@ -25,7 +25,7 @@ Errata FeatureMod::define(swoc::TextView name, FeatureMod::Worker const &f) {
   return Error(R"(Modifier "{}" is already defined.)", name);
 }
 
-Rv<FeatureMod::Handle> FeatureMod::load(Config &cfg, YAML::Node const &node, ValueType ftype) {
+Rv<Modifier::Handle> Modifier::load(Config &cfg, YAML::Node const &node, ValueType ftype) {
   if (! node.IsMap()) {
     return Error(R"(Modifier at {} is not an object as required.)", node.Mark());
   }
@@ -49,9 +49,9 @@ Rv<FeatureMod::Handle> FeatureMod::load(Config &cfg, YAML::Node const &node, Val
   return Error(R"(No valid modifier key in object at {}.)", node.Mark());
 }
 
-class Mod_Hash : public FeatureMod {
+class Mod_Hash : public Modifier {
   using self_type = Mod_Hash;
-  using super_type = FeatureMod;
+  using super_type = Modifier;
 public:
   static const std::string KEY; ///< Identifier name.
 
@@ -107,7 +107,7 @@ Errata Mod_Hash::operator()(Context &ctx, Feature &feature) {
   return {};
 }
 
-Rv<FeatureMod::Handle> Mod_Hash::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
+Rv<Modifier::Handle> Mod_Hash::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
   if (! key_node.IsScalar()) {
     return Error(R"(Value for "{}" at {} in modifier at {} is not a number as required.)", KEY, key_node.Mark(), mod_node.Mark());
   }
@@ -127,9 +127,9 @@ Rv<FeatureMod::Handle> Mod_Hash::load(Config &cfg, YAML::Node mod_node, YAML::No
 // ---
 
 /// Replace the feature with another feature if the input is nil or empty.
-class Mod_Else : public FeatureMod {
+class Mod_Else : public Modifier {
   using self_type = Mod_Else;
-  using super_type = FeatureMod;
+  using super_type = Modifier;
 public:
   static const std::string KEY; ///< Identifier name.
 
@@ -161,9 +161,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node mod_node, YAML::Node key_node);
 
 protected:
-  Extractor::Format _value;
+  Extractor::Expr _value;
 
-  explicit Mod_Else(Extractor::Format && fmt) : _value(std::move(fmt)) {}
+  explicit Mod_Else(Extractor::Expr && fmt) : _value(std::move(fmt)) {}
 };
 
 const std::string Mod_Else::KEY { "else" };
@@ -183,7 +183,7 @@ Errata Mod_Else::operator()(Context &ctx, Feature &feature) {
   return {};
 }
 
-Rv<FeatureMod::Handle> Mod_Else::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
+Rv<Modifier::Handle> Mod_Else::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
   auto && [ fmt, errata ] { cfg.parse_feature(key_node) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" modifier at {}.)", KEY, key_node.Mark());
@@ -195,9 +195,9 @@ Rv<FeatureMod::Handle> Mod_Else::load(Config &cfg, YAML::Node mod_node, YAML::No
 // ---
 
 /// Convert the feature to an Integer.
-class Mod_As_Integer : public FeatureMod {
+class Mod_As_Integer : public Modifier {
   using self_type = Mod_As_Integer;
-  using super_type = FeatureMod;
+  using super_type = Modifier;
 public:
   static const std::string KEY; ///< Identifier name.
 
@@ -229,9 +229,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node mod_node, YAML::Node key_node);
 
 protected:
-  Extractor::Format _value; ///< Default value.
+  Extractor::Expr _value; ///< Default value.
 
-  explicit Mod_As_Integer(Extractor::Format && fmt) : _value(std::move(fmt)) {}
+  explicit Mod_As_Integer(Extractor::Expr && fmt) : _value(std::move(fmt)) {}
 
   /// Identity conversion.
   Feature convert(Context & ctx, feature_type_for<INTEGER> n) { return n; }
@@ -268,7 +268,7 @@ Errata Mod_As_Integer::operator()(Context &ctx, Feature &feature) {
   return {};
 }
 
-Rv<FeatureMod::Handle> Mod_As_Integer::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
+Rv<Modifier::Handle> Mod_As_Integer::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
   auto && [ fmt, errata ] { cfg.parse_feature(key_node) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" modifier at {}.)", KEY, key_node.Mark());
@@ -281,9 +281,9 @@ Rv<FeatureMod::Handle> Mod_As_Integer::load(Config &cfg, YAML::Node mod_node, YA
 
 namespace {
 [[maybe_unused]] bool INITIALIZED = [] () -> bool {
-  FeatureMod::define(Mod_Hash::KEY, &Mod_Hash::load);
-  FeatureMod::define(Mod_Else::KEY, &Mod_Else::load);
-  FeatureMod::define(Mod_As_Integer::KEY, &Mod_As_Integer::load);
+  Modifier::define(Mod_Hash::KEY, &Mod_Hash::load);
+  Modifier::define(Mod_Else::KEY, &Mod_Else::load);
+  Modifier::define(Mod_As_Integer::KEY, &Mod_As_Integer::load);
   return true;
 } ();
 } // namespace

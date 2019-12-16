@@ -138,7 +138,7 @@ public:
    *
    * @see Context::extract
    */
-  swoc::Rv<Extractor::Format> parse_feature(YAML::Node fmt_node, StrType str_type = StrType::VIEW);
+  swoc::Rv<Extractor::Expr> parse_feature(YAML::Node fmt_node, StrType str_type = StrType::VIEW);
 
   /** Copy @a text to local storage in this instance.
    *
@@ -153,13 +153,13 @@ public:
 
   /** Localized a format.
    *
-   * @param fmt Format to localize.
+   * @param fmt Expr to localize.
    * @return @a this
    *
    * Localize all the strings in @a fmt, which is updated in place. If @a fmt is a pure literal
    * it will be condensed in to a single item literal.
    */
-  self_type & localize(Extractor::Format & fmt);
+  self_type & localize(Extractor::Expr & fmt);
 
   self_type& localize(Feature & feature);
 

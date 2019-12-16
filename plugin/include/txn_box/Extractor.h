@@ -17,7 +17,7 @@
 #include <swoc/swoc_ip.h>
 
 #include "txn_box/common.h"
-#include "txn_box/FeatureMod.h"
+#include "txn_box/Modifier.h"
 
 class Context;
 class FeatureGroup;
@@ -34,7 +34,7 @@ public:
   /// Container for extractor factory.
   using Table = std::unordered_map<std::string_view, self_type *>;
 
-  /** Format specifier.
+  /** Expr specifier.
    * This is a subclass of the base format specifier, in order to add a field that points at
    * the extractor, if any, for the specifier.
    */
@@ -45,74 +45,71 @@ public:
     swoc::MemSpan<void> _data;
   };
 
-  /// Parsed feature string.
-  class Format {
-    using self_type = Format; ///< Self reference type.
+  /// Parsed feature extraction format string.
+  class Expr {
+    using self_type = Expr; ///< Self reference type.
   public:
-    Format() = default;
-    Format(self_type const& that) = delete;
-    Format(self_type && that) = default;
+    Expr() = default;
+    Expr(self_type const& that) = delete;
+    Expr(self_type && that) = default;
     self_type & operator = (self_type const& that) = delete;
     self_type & operator = (self_type && that) = default;
+
+    /// Single extractor that generates a direct view.
+    /// Always a @c STRING
+    struct Direct {
+      Spec _spec; ///< Specifier with extractor.
+    };
+
+    /// A composite of extractors and literals.
+    struct Composite {
+      /// Specifiers / elements of the parsed format string.
+      std::vector<Spec> _specs;
+
+      int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
+
+      /// Type of feature extracted by this format.
+      ValueType _result_type = ValueType::STRING;
+
+      /// @c true if the extracted feature should be forced to a C-string.
+      /// @note This only applies for @c STRING features.
+      bool _force_c_string_p = false;
+
+      /** Access a format element by index.
+       *
+       * @param idx Element index.
+       * @return A reference to the element.
+       */
+      Spec& operator [] (size_t idx);
+
+      /** Access a format element by index.
+       *
+       * @param idx Element index.
+       * @return A reference to the element.
+       */
+      Spec const& operator [] (size_t idx) const;
+
+    };
+
+    /// Base feature expression.
+    struct Local {
+      std::variant<std::monostate, Feature, Direct, Composite> _expr;
+      std::vector<Modifier::Handle> _mods;
+
+      /// @c true if the extracted feature should be forced to a C-string.
+      /// @note This only applies for @c STRING features.
+      bool _force_c_string_p = false;
+
+      bool is_literal() const { return _expr.index() == 0 || _expr.index() == 1; }
+    };
 
     /// @defgroup Properties.
     /// @{
     bool _ctx_ref_p = false; /// @c true if any format element has a context reference.
-    bool _literal_p = true; ///< @c true if the format is only literals, no extractors. @see _literal
-    bool _direct_p = false; ///< @c true if the format is a single view that can be accessed directly.
-    /// @c true if the extracted feature should be forced to a C-string.
-    /// @note This only applies for @c STRING features.
-    bool _force_c_string_p = false;
 
     Feature _literal; ///< If the format is a literal, this is the value. @see literal_p
     int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
     /// @}
-
-    /// Type of feature extracted by this format.
-    ValueType _result_type = ValueType::STRING;
-
-    /// Condensed format string.
-    using Specifiers = std::vector<Spec>;
-    using iterator = Specifiers::iterator;
-    using const_iterator = Specifiers::const_iterator;
-
-    /// Modifiers
-    using Modifers = std::vector<FeatureMod::Handle>;
-
-    /// Specifiers / elements of the parsed format string.
-    Specifiers _specs;
-
-    /// Post extraction modifiers.
-    Modifers _mods;
-
-    /// Add an format specifier item to the format.
-    self_type & push_back(Spec const& spec);
-
-    /// The number of elements in the format.
-    size_t size() const;
-
-    iterator begin() { return _specs.begin(); }
-    iterator end() { return _specs.end(); }
-    const_iterator begin() const { return _specs.begin(); }
-    const_iterator end() const { return _specs.end(); }
-
-    /** Access a format element by index.
-     *
-     * @param idx Element index.
-     * @return A reference to the element.
-     */
-    Spec& operator [] (size_t idx);
-
-    /** Access a format element by index.
-     *
-     * @param idx Element index.
-     * @return A reference to the element.
-     */
-    Spec const& operator [] (size_t idx) const;
-
-    /// Check if the format is empty.
-    /// @note Default constructed instances are empty.
-    bool empty() const { return _specs.empty(); }
 
     /** Check if the format is a pure literal (no extractors).
      *
@@ -120,30 +117,23 @@ public:
      */
     bool is_literal() const;
 
-    /** Return the literal value of the format.
-     *
-     * @return A view of the literal.
-     *
-     * Valid iff @a this->is_literal() is @c true.
-     */
-    swoc::TextView literal() const;
   };
 
-  /** Format extractor for BWF.
-   * Walk the @c Format and pull out the items for BWF.
+  /** Expr extractor for BWF.
+   * Walk the @c Expr and pull out the items for BWF.
    */
   class FmtEx {
   public:
     /// Construct with specifier sequence.
-    FmtEx(Format::Specifiers const& specs) : _specs(specs), _iter(specs.begin()) {}
+    FmtEx(Expr::Specifiers const& specs) : _specs(specs), _iter(specs.begin()) {}
 
     /// Validity check.
     explicit operator bool() const { return _iter != _specs.end(); }
-    /// Format next literal and/or specifier.
+    /// Expr next literal and/or specifier.
     bool operator()(std::string_view& literal, Spec & spec);
   protected:
-    Format::Specifiers const& _specs; ///< Specifiers in format.
-    Format::Specifiers::const_iterator _iter; ///< Current specifier.
+    Expr::Specifiers const& _specs; ///< Specifiers in format.
+    Expr::Specifiers::const_iterator _iter; ///< Current specifier.
   };
 
   /** Validate the use of the extractor in a feature string.
@@ -208,10 +198,10 @@ public:
   /** Parse a format string.
    *
    * @param cfg Configuration instance.
-   * @param format_string Format string.
+   * @param format_string Expr string.
    * @return The format instance or errors on failure.
    */
-  static swoc::Rv<Format> parse(Config &cfg, swoc::TextView format_string);
+  static swoc::Rv<Expr> parse(Config &cfg, swoc::TextView format_string);
 
   /** Parse a raw string.
    *
@@ -220,20 +210,20 @@ public:
    *
    * This is useful for parsing a string which is presumed to be a single extractor.
    */
-  static swoc::Rv <Extractor::Format> parse_raw(Config &cfg, swoc::TextView text);
+  static swoc::Rv <Extractor::Expr> parse_raw(Config &cfg, swoc::TextView text);
 
   /** Create a format string as a literal.
    *
-   * @param format_string Format string.
+   * @param format_string Expr string.
    * @return The format instance.
    *
    * This does no parsing of @a format_string. It will return a format that outputs @a format_string
    * literally. This format will always have default formatting and no extension.
    */
-  static Format literal(swoc::TextView format_string);
-  static Format literal(feature_type_for<NIL> nil);
-  static Format literal(feature_type_for<INTEGER> format_string);
-  static Format literal(feature_type_for<IP_ADDR> const& format_string);
+  static Expr literal(swoc::TextView format_string);
+  static Expr literal(feature_type_for<NIL> nil);
+  static Expr literal(feature_type_for<INTEGER> format_string);
+  static Expr literal(feature_type_for<IP_ADDR> const& format_string);
 
   /** Define @a name as the extractor @a ex.
    *
@@ -307,7 +297,7 @@ public:
   /** Get a view of the feature.
    *
    * @param ctx Transaction context.
-   * @param spec Format specifier
+   * @param spec Expr specifier
    * @return A view of the feature.
    *
    * @a spec may contain additional information needed by the extractor.
@@ -334,20 +324,20 @@ public:
 
 inline auto BooleanExtractor::result_type() const -> ValueType { return BOOLEAN; }
 
-inline size_t Extractor::Format::size() const { return _specs.size(); }
+inline size_t Extractor::Expr::size() const { return _specs.size(); }
 
-inline swoc::TextView Extractor::Format::literal() const {
+inline swoc::TextView Extractor::Expr::literal() const {
   if (_literal_p) {
     return _specs[0]._ext;
   }
   return {};
 }
 
-inline bool Extractor::Format::is_literal() const { return _literal_p; }
+inline bool Extractor::Expr::is_literal() const { return _literal_p; }
 
-inline Extractor::Spec&Extractor::Format::operator[](size_t idx) { return _specs[idx]; }
+inline Extractor::Spec&Extractor::Expr::operator[](size_t idx) { return _specs[idx]; }
 
-inline Extractor::Spec const&Extractor::Format::operator[](size_t idx) const { return _specs[idx]; }
+inline Extractor::Spec const&Extractor::Expr::operator[](size_t idx) const { return _specs[idx]; }
 
 /* ---------------------------------------------------------------------------------------------- */
 /** Mixin for more convenient feature extraction.
@@ -388,13 +378,13 @@ public:
   struct ExfInfo {
     /// Information for a feature with a single extraction format.
     struct Single {
-      Extractor::Format _fmt; ///< The format.
+      Extractor::Expr _fmt; ///< The format.
       Feature _feature; ///< Retrieved feature data.
     };
 
     /// Information for a feature with multiple extraction formats.
     struct Multi {
-      std::vector<Extractor::Format> _fmt; ///< Extractor formats.
+      std::vector<Extractor::Expr> _fmt; ///< Extractor formats.
     };
 
     swoc::TextView _name; ///< Key name.
@@ -513,7 +503,7 @@ protected:
       index_type _edge_count = 0; ///< # of immediate dependent references.
       uint8_t _mark = NONE; ///< Ordering search march.
       uint8_t _required_p : 1; ///< Key must exist and have a valid format.
-      uint8_t _multi_p : 1; ///< Format can be a list of formats.
+      uint8_t _multi_p : 1; ///< Expr can be a list of formats.
 
       /// Cross reference (dependency graph edge)
       /// @note THIS IS NOT PART OF THE NODE VALUE!
@@ -537,7 +527,7 @@ protected:
     /// Shared vector of formats - each key has a span that covers part of this vector.
     /// @internal Not allocated in the config data because of clean up issues - these can contain
     /// other allocated data that needs destructors to be invoked.
-    std::vector<Extractor::Format> _fmt_array;
+    std::vector<Extractor::Expr> _fmt_array;
 
     /// The number of valid elements in the array.
     index_type _count = 0;

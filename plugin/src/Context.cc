@@ -115,7 +115,7 @@ void Context::operator()(swoc::BufferWriter& w, Extractor::Spec const& spec) {
   spec._exf->format(w, spec, *this);
 }
 
-Feature Context::extract(Extractor::Format const &fmt) {
+Feature Context::extract(Extractor::Expr const &fmt) {
   if (fmt._direct_p) {
     return dynamic_cast<DirectFeature *>(fmt[0]._exf)->direct_view(*this, fmt[0]);
   } else if (fmt._literal_p) {

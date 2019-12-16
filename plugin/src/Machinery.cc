@@ -73,7 +73,7 @@ public:
    *
    * @param fmt Feature for host.
    */
-  Do_creq_host(Extractor::Format && fmt);
+  Do_creq_host(Extractor::Expr && fmt);
 
   /** Invoke directive.
    *
@@ -95,13 +95,13 @@ public:
                           , swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _fmt; ///< Host feature.
+  Extractor::Expr _fmt; ///< Host feature.
 };
 
 const std::string Do_creq_host::KEY { "creq-host" };
 const HookMask Do_creq_host::HOOKS { MaskFor({Hook::CREQ, Hook::PRE_REMAP, Hook::POST_REMAP}) };
 
-Do_creq_host::Do_creq_host(Extractor::Format &&fmt) : _fmt(std::move(fmt)) {}
+Do_creq_host::Do_creq_host(Extractor::Expr &&fmt) : _fmt(std::move(fmt)) {}
 
 Errata Do_creq_host::invoke(Context &ctx) {
   TextView host{std::get<IndexFor(STRING)>(ctx.extract(_fmt))};
@@ -135,7 +135,7 @@ public:
    *
    * @param fmt Feature for host.
    */
-  Do_preq_host(Extractor::Format && fmt);
+  Do_preq_host(Extractor::Expr && fmt);
 
   /** Invoke directive.
    *
@@ -157,13 +157,13 @@ public:
                         , swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _fmt; ///< Host feature.
+  Extractor::Expr _fmt; ///< Host feature.
 };
 
 const std::string Do_preq_host::KEY { "preq-host" };
 const HookMask Do_preq_host::HOOKS { MaskFor({Hook::PREQ, Hook::PRE_REMAP, Hook::POST_REMAP}) };
 
-Do_preq_host::Do_preq_host(Extractor::Format &&fmt) : _fmt(std::move(fmt)) {}
+Do_preq_host::Do_preq_host(Extractor::Expr &&fmt) : _fmt(std::move(fmt)) {}
 
 Errata Do_preq_host::invoke(Context &ctx) {
   TextView host{std::get<IndexFor(STRING)>(ctx.extract(_fmt))};
@@ -197,7 +197,7 @@ public:
    *
    * @param fmt Feature for host.
    */
-  Do_remap_host(Extractor::Format && fmt);
+  Do_remap_host(Extractor::Expr && fmt);
 
   /** Invoke directive.
    *
@@ -219,13 +219,13 @@ public:
                           , swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _fmt; ///< Host feature.
+  Extractor::Expr _fmt; ///< Host feature.
 };
 
 const std::string Do_remap_host::KEY { "remap-host" };
 const HookMask Do_remap_host::HOOKS { MaskFor(Hook::REMAP) };
 
-Do_remap_host::Do_remap_host(Extractor::Format &&fmt) : _fmt(std::move(fmt)) {}
+Do_remap_host::Do_remap_host(Extractor::Expr &&fmt) : _fmt(std::move(fmt)) {}
 
 Errata Do_remap_host::invoke(Context &ctx) {
   TextView host{std::get<IndexFor(STRING)>(ctx.extract(_fmt))};
@@ -325,16 +325,16 @@ class FieldDirective : public Directive {
   using super_type = Directive; ///< Parent type.
 protected:
   TextView _name; ///< Field name.
-  Extractor::Format _value_fmt; ///< Feature for value.
+  Extractor::Expr _value_fmt; ///< Feature for value.
 
-  FieldDirective(TextView const& name, Extractor::Format && fmt);
+  FieldDirective(TextView const& name, Extractor::Expr && fmt);
 
   Errata invoke(Context& ctx, ts::HttpHeader && hdr);
 
-  static Rv<Handle> load(Config& cfg, std::function<Handle (TextView const& name, Extractor::Format && fmt)> const& maker, TextView const& key, TextView const& name, YAML::Node const& key_value);
+  static Rv<Handle> load(Config& cfg, std::function<Handle (TextView const& name, Extractor::Expr && fmt)> const& maker, TextView const& key, TextView const& name, YAML::Node const& key_value);
 };
 
-FieldDirective::FieldDirective(TextView const &name, Extractor::Format &&fmt) : _name(name), _value_fmt(std::move(fmt)) {}
+FieldDirective::FieldDirective(TextView const &name, Extractor::Expr &&fmt) : _name(name), _value_fmt(std::move(fmt)) {}
 
 Errata FieldDirective::invoke(Context & ctx, ts::HttpHeader && hdr) {
   if (hdr.is_valid()) {
@@ -352,7 +352,7 @@ Errata FieldDirective::invoke(Context & ctx, ts::HttpHeader && hdr) {
 }
 
 auto FieldDirective::load(Config &cfg, std::function<Handle(TextView const &
-                         , Extractor::Format &&)> const &maker
+                         , Extractor::Expr &&)> const &maker
                          , TextView const &key, TextView const &arg
                          , YAML::Node const &key_value) -> Rv<Handle> {
   auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
@@ -396,7 +396,7 @@ Errata Do_creq_field::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_creq_field::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Format && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 // --
@@ -422,7 +422,7 @@ Errata Do_preq_field::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_preq_field::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Format && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 // --
@@ -448,7 +448,7 @@ Errata Do_prsp_field::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_prsp_field::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Format && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 /// Set a field in the client request if not already set.
@@ -476,7 +476,7 @@ Errata Do_creq_field_default::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_creq_field_default::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Format && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 /// Set a field in the client request if not already set.
@@ -504,7 +504,7 @@ Errata Do_preq_field_default::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_preq_field_default::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Format && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 /* ------------------------------------------------------------------------------------ */
 /// Remove a field from the client request.
@@ -617,7 +617,7 @@ public:
 
 protected:
   TSHttpStatus _status = TS_HTTP_STATUS_NONE; ///< Return status is literal, 0 => extract at runtime.
-  Extractor::Format _status_fmt; ///< Return status.
+  Extractor::Expr _status_fmt; ///< Return status.
 
   Do_set_ursp_status() = default;
 };
@@ -696,7 +696,7 @@ public:
 
 protected:
   TSHttpStatus _status = TS_HTTP_STATUS_NONE; ///< Return status is literal, 0 => extract at runtime.
-  Extractor::Format _fmt; ///< Reason phrase.
+  Extractor::Expr _fmt; ///< Reason phrase.
 
   Do_set_ursp_reason() = default;
 };
@@ -745,7 +745,7 @@ public:
 
 protected:
   TSHttpStatus _status = TS_HTTP_STATUS_NONE; ///< Return status is literal, 0 => extract at runtime.
-  Extractor::Format _fmt; ///< Reason phrase.
+  Extractor::Expr _fmt; ///< Reason phrase.
 
   Do_set_prsp_body() = default;
 };
@@ -967,16 +967,16 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _tag_fmt;
-  Extractor::Format _msg_fmt;
+  Extractor::Expr _tag_fmt;
+  Extractor::Expr _msg_fmt;
 
-  Do_debug_msg(Extractor::Format && tag, Extractor::Format && msg);
+  Do_debug_msg(Extractor::Expr && tag, Extractor::Expr && msg);
 };
 
 const std::string Do_debug_msg::KEY { "debug" };
 const HookMask Do_debug_msg::HOOKS { MaskFor({Hook::CREQ, Hook::PREQ, Hook::URSP, Hook::PRSP, Hook::PRE_REMAP, Hook::POST_REMAP, Hook::REMAP }) };
 
-Do_debug_msg::Do_debug_msg(Extractor::Format &&tag, Extractor::Format &&msg) : _tag_fmt(std::move(tag)), _msg_fmt(std::move(msg)) {}
+Do_debug_msg::Do_debug_msg(Extractor::Expr &&tag, Extractor::Expr &&msg) : _tag_fmt(std::move(tag)), _msg_fmt(std::move(msg)) {}
 
 Errata Do_debug_msg::invoke(Context &ctx) {
   TextView tag = std::get<IndexFor(STRING)>(ctx.extract(_tag_fmt));
@@ -1017,10 +1017,10 @@ Rv<Directive::Handle> Do_debug_msg::load(Config& cfg, YAML::Node const& drtv_nod
 /* ------------------------------------------------------------------------------------ */
 class QueryDirective {
 public:
-  Errata invoke(Context &ctx, Extractor::Format& fmt, ts::URL url, TextView key);
+  Errata invoke(Context &ctx, Extractor::Expr& fmt, ts::URL url, TextView key);
 };
 
-Errata QueryDirective::invoke(Context &ctx, Extractor::Format& fmt, ts::URL url, TextView key) {
+Errata QueryDirective::invoke(Context &ctx, Extractor::Expr& fmt, ts::URL url, TextView key) {
   auto feature = ctx.extract(fmt);
   if (key.empty()) {
     url.query_set(std::get<IndexFor(STRING)>(feature));
@@ -1083,9 +1083,9 @@ public:
 
 protected:
   TextView _arg;
-  Extractor::Format _fmt;
+  Extractor::Expr _fmt;
 
-  Do_set_creq_query(TextView arg, Extractor::Format && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
+  Do_set_creq_query(TextView arg, Extractor::Expr && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
 };
 
 const std::string Do_set_creq_query::KEY { "set-creq-query" };
@@ -1124,9 +1124,9 @@ public:
 
 protected:
   TextView _arg;
-  Extractor::Format _fmt;
+  Extractor::Expr _fmt;
 
-  Do_remap_query(TextView arg, Extractor::Format && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
+  Do_remap_query(TextView arg, Extractor::Expr && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
 };
 
 const std::string Do_remap_query::KEY { "remap-query" };
@@ -1174,9 +1174,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _fmt; ///< Cache key.
+  Extractor::Expr _fmt; ///< Cache key.
 
-  Do_cache_key(Extractor::Format && fmt) : _fmt(std::move(fmt)) {}
+  Do_cache_key(Extractor::Expr && fmt) : _fmt(std::move(fmt)) {}
 };
 
 const std::string Do_cache_key::KEY { "cache-key" };
@@ -1217,10 +1217,10 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _fmt; ///< Cache key.
+  Extractor::Expr _fmt; ///< Cache key.
   ts::TxnConfigVar *_var = nullptr;
 
-  Do_txn_conf(Extractor::Format && fmt, ts::TxnConfigVar * var) : _fmt(std::move(fmt)), _var(var) {}
+  Do_txn_conf(Extractor::Expr && fmt, ts::TxnConfigVar * var) : _fmt(std::move(fmt)), _var(var) {}
 };
 
 const std::string Do_txn_conf::KEY { "txn-conf" };
@@ -1275,9 +1275,9 @@ public:
 
 protected:
   TextView _name; ///< Variable name.
-  Extractor::Format _value; ///< Value for variable.
+  Extractor::Expr _value; ///< Value for variable.
 
-  Do_var(TextView const& arg, Extractor::Format && value) : _name(arg), _value(std::move(value)) {}
+  Do_var(TextView const& arg, Extractor::Expr && value) : _name(arg), _value(std::move(value)) {}
 };
 
 const std::string Do_var::KEY { "var" };
@@ -1313,7 +1313,7 @@ public:
   static swoc::Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Format _ex; ///< Extractor format.
+  Extractor::Expr _ex; ///< Extractor format.
   Directive::Handle _do; ///< Pre-selection directives.
 
   /// A single case in the select.
@@ -1357,7 +1357,7 @@ public:
   Errata invoke(Context &ctx) override;
 
 protected:
-  std::vector<Extractor::Format> _ex; /// Extractor tuple.
+  std::vector<Extractor::Expr> _ex; /// Extractor tuple.
 
   /// A single case in the select.
   struct Case {
@@ -1501,7 +1501,7 @@ Errata With::load_case(Config & cfg, YAML::Node node) {
 // This is only called from @c With::load which calls this iff the @c with key value is a sequence.
 swoc::Rv<Directive::Handle> WithTuple::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
   YAML::Node select_node { drtv_node[SELECT_KEY] };
-  std::vector<Extractor::Format> ex_tuple;
+  std::vector<Extractor::Expr> ex_tuple;
 
   // Get the feature extraction tuple.
   for ( auto const& child : key_value ) {
