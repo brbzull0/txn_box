@@ -17,6 +17,7 @@
 #include <swoc/swoc_ip.h>
 
 #include "txn_box/common.h"
+#include "txn_box/Expr.h"
 #include "txn_box/Modifier.h"
 
 class Context;
@@ -107,7 +108,6 @@ public:
     /// @{
     bool _ctx_ref_p = false; /// @c true if any format element has a context reference.
 
-    Feature _literal; ///< If the format is a literal, this is the value. @see literal_p
     int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
     /// @}
 
