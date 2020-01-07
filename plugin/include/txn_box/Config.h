@@ -126,6 +126,19 @@ public:
    */
   FeatureNodeStyle feature_node_style(YAML::Node value);
 
+  /** Parse a feature expression.
+   *
+   * @param fmt_node The node with the expression.
+   * @return The expression or errors.
+   *
+   * This does extensive work for handle the various feature extraction capabilities. This should
+   * be bypassed only in extreme cases where very specialized handling is needed. The result of
+   * this can be passed to @c Context::extract to get the actual value at runtime.
+   *
+   * @see Context::extract
+   */
+  swoc::Rv<Expr> parse_expr(YAML::Node fmt_node);
+
   /** Parse a node as a feature extractor.
    *
    * @param fmt_node The node with the extractor.
@@ -267,6 +280,17 @@ protected:
   swoc::MemArena _arena;
 
   swoc::Rv<Directive::Handle> load_directive(YAML::Node const& drtv_node);
+
+  /** Parse a scalar feature expression.
+   *
+   * @param fmt_node The node with the extractor. Must be a scalar.
+   * @return The expression or errors.
+   *
+   * Used for scalar expressions that are not NULL nor explicitly literal.
+   *
+   */
+  swoc::Rv<Expr> parse_scalar_expr(YAML::Node node);
+
 };
 
 inline Hook Config::current_hook() const { return _hook; }

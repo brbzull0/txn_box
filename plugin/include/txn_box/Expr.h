@@ -27,6 +27,8 @@ public:
   self_type & operator = (self_type const& that) = delete;
   self_type & operator = (self_type && that) = default;
 
+  Expr(Feature const& f) : _expr(f) {}
+
   /** Featire Expression specifier.
    * This is a subclass of the base format specifier, in order to add a field that points at
    * the extractor, if any, for the specifier.
@@ -85,4 +87,5 @@ public:
   std::vector<Modifier::Handle> _mods;
 
   bool is_literal() const { return _expr.index() == 0 || _expr.index() == 1; }
+
 };

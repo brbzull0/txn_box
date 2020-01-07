@@ -159,6 +159,70 @@ FeatureNodeStyle Config::feature_node_style(YAML::Node value) {
   return FeatureNodeStyle::INVALID;
 }
 
+Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
+  std::string_view expr_tag(expr_node.Tag());
+
+  // This is the base entry method, so it needs to handle all cases, although most of them
+  // will be delegated. Handle the direct / simple special cases here.
+
+  // If explicitly marked a literal, then no further processing should be done.
+  if (0 == strcasecmp(expr_tag, LITERAL_TAG)) {
+    if (!expr_node.IsScalar()) {
+      return Error(R"("!{}" tag used on value at {} which is not a string as required for a literal.)", LITERAL_TAG, expr_node.Mark());
+    }
+    return Expr{FeatureView::Literal(expr_node.Scalar())};
+  } else if (0 != strcasecmp(expr_tag, "?"_sv) && 0 != strcasecmp(expr_tag, "!"_sv)) {
+    return Error(R"("{}" tag for extractor expression is not supported.)", expr_tag);
+  }
+
+  if (expr_node.IsNull()) { // explicit NULL
+    return Expr{NIL_FEATURE};
+  }
+  if (expr_node.IsScalar()) {
+    return this->parse_scalar_expr(expr_node);
+  }
+  if (! expr_node.IsSequence()) {
+    return Error("Feature expression is not properly structured.");
+  }
+  switch (expr_node.size()) {
+    case 0:return Expr{NIL_FEATURE};
+    case 1: return this->parse_scalar_expr(expr_node[0]);
+    default:
+      break;
+  }
+}
+
+Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
+  Rv<Expr> zret;
+  TextView text { node.Scalar() };
+  if (text.empty()) { // no value at all
+    return Expr{};
+  } else if (node.Tag() == "?"_tv) { // unquoted, must be extractor.
+    zret = Extractor::parse_raw(*this, text);
+  } else {
+    zret = Extractor::parse(*this, text);
+  }
+
+  if (zret.is_ok()) {
+    auto & expr = zret.result();
+    if (expr._max_arg_idx >= 0) {
+      if (!_rxp_group_state || _rxp_group_state->_rxp_group_count == 0) {
+        return Error(R"(Extracting capture group at {} but no regular expression is active.)", fmt_node.Mark());
+      } else if (expr._max_arg_idx >= _rxp_group_state->_rxp_group_count) {
+        return Error(R"(Extracting capture group {} at {} but the maximum capture group is {} in the active regular expression from line {}.)", exfmt._max_arg_idx, fmt_node.Mark(), _rxp_group_state->_rxp_group_count-1, _rxp_group_state->_rxp_line);
+      }
+    }
+
+    if (expr._ctx_ref_p && _feature_state && _feature_state->_feature_ref_p) {
+      _feature_state->_feature_ref_p = true;
+    }
+
+    this->localize(exfmt);
+  }
+  return std::move(zret);
+
+}
+
 Rv<Extractor::Expr> Config::parse_feature(YAML::Node fmt_node, StrType str_type) {
   // Unfortunately, lots of special cases here.
 
