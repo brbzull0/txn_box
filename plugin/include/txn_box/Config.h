@@ -291,6 +291,9 @@ protected:
    */
   swoc::Rv<Expr> parse_scalar_expr(YAML::Node node);
 
+  swoc::Rv<Expr> parse_unquoted_scalar(swoc::TextView const& text);
+
+  Errata update_extractor(Expr::Spec &spec);
 };
 
 inline Hook Config::current_hook() const { return _hook; }

@@ -34,90 +34,7 @@ class Extractor {
 public:
   /// Container for extractor factory.
   using Table = std::unordered_map<std::string_view, self_type *>;
-
-  /** Expr specifier.
-   * This is a subclass of the base format specifier, in order to add a field that points at
-   * the extractor, if any, for the specifier.
-   */
-  struct Spec : public swoc::bwf::Spec {
-    /// Extractor used in the spec, if any.
-    Extractor * _exf = nullptr;
-    /// Config storage for extractor, if needed.
-    swoc::MemSpan<void> _data;
-  };
-
-  /// Parsed feature extraction format string.
-  class Expr {
-    using self_type = Expr; ///< Self reference type.
-  public:
-    Expr() = default;
-    Expr(self_type const& that) = delete;
-    Expr(self_type && that) = default;
-    self_type & operator = (self_type const& that) = delete;
-    self_type & operator = (self_type && that) = default;
-
-    /// Single extractor that generates a direct view.
-    /// Always a @c STRING
-    struct Direct {
-      Spec _spec; ///< Specifier with extractor.
-    };
-
-    /// A composite of extractors and literals.
-    struct Composite {
-      /// Specifiers / elements of the parsed format string.
-      std::vector<Spec> _specs;
-
-      int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
-
-      /// Type of feature extracted by this format.
-      ValueType _result_type = ValueType::STRING;
-
-      /// @c true if the extracted feature should be forced to a C-string.
-      /// @note This only applies for @c STRING features.
-      bool _force_c_string_p = false;
-
-      /** Access a format element by index.
-       *
-       * @param idx Element index.
-       * @return A reference to the element.
-       */
-      Spec& operator [] (size_t idx);
-
-      /** Access a format element by index.
-       *
-       * @param idx Element index.
-       * @return A reference to the element.
-       */
-      Spec const& operator [] (size_t idx) const;
-
-    };
-
-    /// Base feature expression.
-    struct Local {
-      std::variant<std::monostate, Feature, Direct, Composite> _expr;
-      std::vector<Modifier::Handle> _mods;
-
-      /// @c true if the extracted feature should be forced to a C-string.
-      /// @note This only applies for @c STRING features.
-      bool _force_c_string_p = false;
-
-      bool is_literal() const { return _expr.index() == 0 || _expr.index() == 1; }
-    };
-
-    /// @defgroup Properties.
-    /// @{
-    bool _ctx_ref_p = false; /// @c true if any format element has a context reference.
-
-    int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
-    /// @}
-
-    /** Check if the format is a pure literal (no extractors).
-     *
-     * @return @c true if the format is a literal, @c false if not.
-     */
-    bool is_literal() const;
-
-  };
+  using Spec = Expr::Spec;
 
   /** Expr extractor for BWF.
    * Walk the @c Expr and pull out the items for BWF.
@@ -234,6 +151,11 @@ public:
    * This populates the set of names used in the configuration file to specify extractors.
    */
   static swoc::Errata define(swoc::TextView name, self_type * ex);
+
+  static self_type* find(swoc::TextView const& name) {
+    auto spot { _ex_table.find(name)};
+    return spot == _ex_table.end() ? nullptr : spot->second;
+  }
 
 protected:
   /// Named extractors.

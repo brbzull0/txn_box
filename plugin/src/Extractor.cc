@@ -10,6 +10,8 @@
 #include <swoc/TextView.h>
 #include <swoc/Errata.h>
 
+#include "txn_box/common.h"
+#include "txn_box/Expr.h"
 #include "txn_box/Extractor.h"
 #include "txn_box/Context.h"
 #include "txn_box/Config.h"
@@ -85,66 +87,33 @@ Extractor::Expr Extractor::literal(feature_type_for<IP_ADDR> const& addr) {
   return std::move(fmt);
 }
 
-Errata Extractor::update_extractor(Config & cfg, Spec &spec) {
-  if (spec._name.empty()) {
-    return Error(R"(Extractor name required but not found.)");
-  }
-
-  if (spec._idx < 0) {
-    auto name = TextView{spec._name};
-    auto && [ arg, arg_errata ] { parse_arg(name) };
-    if (!arg_errata.is_ok()) {
-      return std::move(arg_errata);
-    }
-
-    if (auto ex{_ex_table.find(name)}; ex != _ex_table.end()) {
-      spec._exf = ex->second;
-      spec._name = name;
-      auto errata { ex->second->validate(cfg, spec, arg) };
-      if (! errata.is_ok()) {
-        return std::move(errata);
-      }
-    } else {
-      return Error(R"(Extractor "{}" not found.)", name);
-    }
-  }
-  return {};
-}
-
-Rv<Extractor::Expr> Extractor::parse_raw(Config &cfg, TextView text) {
-  // Check for specific types of literals
-
-  // Empty string?
-  if (text.empty()) {
-    return self_type::literal(""_tv);
-  };
-
+Rv<Expr> Config::parse_unquoted_scalar(swoc::TextView const& text) {
   // Integer?
   TextView parsed;
   auto n = swoc::svtoi(text, &parsed);
   if (parsed.size() == text.size()) {
-    return self_type::literal(n);
+    return Expr{FeatureView::Literal(text)};
   }
 
   // bool?
   auto b = BoolNames[text];
   if (b != BoolTag::INVALID) {
-    return self_type::literal(b);
+    return Expr{Feature{b == BoolTag::True}};
   }
 
   // IP Address?
   swoc::IPAddr addr;
   if (addr.parse(text)) {
-    return self_type::literal(addr);
+    return Expr{Feature{addr}};
   }
 
   // Presume an extractor.
-  Spec spec;
+  Expr::Spec spec;
   bool valid_p = spec.parse(text);
   if (!valid_p) {
     return Error(R"(Invalid format for extractor - "{}")", text);
   }
-  auto errata = self_type::update_extractor(cfg, spec);
+  auto errata = Extractor::update_extractor(*this, spec);
   if (! errata.is_ok()) {
     return std::move(errata);
   }

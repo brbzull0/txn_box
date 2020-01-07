@@ -159,6 +159,34 @@ FeatureNodeStyle Config::feature_node_style(YAML::Node value) {
   return FeatureNodeStyle::INVALID;
 }
 
+Errata Config::update_extractor(Expr::Spec &spec) {
+  if (spec._name.empty()) {
+    return Error(R"(Extractor name required but not found.)");
+  }
+
+  if (spec._idx < 0) {
+    auto name = TextView{spec._name};
+    auto && [ arg, arg_errata ] { parse_arg(name) };
+    if (!arg_errata.is_ok()) {
+      return std::move(arg_errata);
+    }
+
+    if (auto ex{Extractor::find(name)}; nullptr != ex) {
+      spec._exf = ex;
+      spec._name = name;
+      auto errata { ex->validate(*this, spec, arg) };
+      if (! errata.is_ok()) {
+        return std::move(errata);
+      }
+    } else {
+      return Error(R"(Extractor "{}" not found.)", name);
+    }
+  }
+  return {};
+}
+
+
+
 Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
   std::string_view expr_tag(expr_node.Tag());
 
