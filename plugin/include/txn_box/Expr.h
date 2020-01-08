@@ -13,13 +13,12 @@
 #include <swoc/bwf_base.h>
 
 #include "txn_box/Modifier.h"
-
-// Forward references.
-class Extractor;
+#include "txn_box/Extractor.h"
 
 /// Parsed feature expression.
 class Expr {
   using self_type = Expr; ///< Self reference type.
+  using Spec = Extractor::Spec; ///< Import for convenience.
 public:
   Expr() = default;
   Expr(self_type const& that) = delete;
@@ -27,22 +26,28 @@ public:
   self_type & operator = (self_type const& that) = delete;
   self_type & operator = (self_type && that) = default;
 
+  /** Construct from a Feature.
+   *
+   * @param f Feature that is the result of the expression.
+   *
+   * The constructed instance will always be the literal @a f.
+   */
   Expr(Feature const& f) : _expr(f) {}
 
-  /** Featire Expression specifier.
-   * This is a subclass of the base format specifier, in order to add a field that points at
-   * the extractor, if any, for the specifier.
-   */
-  struct Spec : public swoc::bwf::Spec {
-    /// Extractor used in the spec, if any.
-    Extractor * _exf = nullptr;
-    /// Config storage for extractor, if needed.
-    swoc::MemSpan<void> _data;
-  };
+  Expr(Spec const& spec) {
+    if (spec._exf && spec._exf->is_direct()) {
+      _expr.emplace<DIRECT>(spec);
+    } else {
+      auto & comp { _expr.emplace<Expr::COMPOSITE>() };
+      comp._specs.push_back(spec);
+      comp._result_type = spec._exf->result_type();
+    }
+  }
 
   /// Single extractor that generates a direct view.
   /// Always a @c STRING
   struct Direct {
+    Direct(Spec const& spec) : _spec(spec) {}
     Spec _spec; ///< Specifier with extractor.
   };
 
@@ -50,10 +55,6 @@ public:
   struct Composite {
     /// Type of feature extracted by this format.
     ValueType _result_type = ValueType::STRING;
-
-    /// @c true if the extracted feature should be forced to a C-string.
-    /// @note This only applies for @c STRING features.
-    bool _force_c_string_p = false;
 
     int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
 
@@ -81,11 +82,26 @@ public:
     std::vector<std::unique_ptr<self_type>> _exprs;
   };
 
-  /// Concrete types for a specific expresion.
+  /// Concrete types for a specific expression.
   std::variant<std::monostate, Feature, Direct, Composite, Tuple> _expr;
+  /// Enumerations for type indices.
+  enum {
+    NIL = 0,
+    FEATURE = 1,
+    DIRECT = 2,
+    COMPOSITE = 3,
+    TUPLE = 4
+  };
+
   /// Post extraction modifiers.
   std::vector<Modifier::Handle> _mods;
 
-  bool is_literal() const { return _expr.index() == 0 || _expr.index() == 1; }
+  bool is_literal() const { return _expr.index() == NIL || _expr.index() == FEATURE; }
+
+  static self_type make_direct(Spec const& spec) {
+    Expr expr;
+    expr._expr.emplace<DIRECT>(spec);
+    return std::move(expr);
+  }
 
 };

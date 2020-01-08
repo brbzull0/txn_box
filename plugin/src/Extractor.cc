@@ -87,44 +87,6 @@ Extractor::Expr Extractor::literal(feature_type_for<IP_ADDR> const& addr) {
   return std::move(fmt);
 }
 
-Rv<Expr> Config::parse_unquoted_scalar(swoc::TextView const& text) {
-  // Integer?
-  TextView parsed;
-  auto n = swoc::svtoi(text, &parsed);
-  if (parsed.size() == text.size()) {
-    return Expr{FeatureView::Literal(text)};
-  }
-
-  // bool?
-  auto b = BoolNames[text];
-  if (b != BoolTag::INVALID) {
-    return Expr{Feature{b == BoolTag::True}};
-  }
-
-  // IP Address?
-  swoc::IPAddr addr;
-  if (addr.parse(text)) {
-    return Expr{Feature{addr}};
-  }
-
-  // Presume an extractor.
-  Expr::Spec spec;
-  bool valid_p = spec.parse(text);
-  if (!valid_p) {
-    return Error(R"(Invalid format for extractor - "{}")", text);
-  }
-  auto errata = Extractor::update_extractor(*this, spec);
-  if (! errata.is_ok()) {
-    return std::move(errata);
-  }
-
-  Expr fmt;
-  fmt.push_back(spec);
-  fmt._direct_p = spec._exf->is_direct();
-  fmt._result_type = spec._exf->result_type();
-  return std::move(fmt);
-}
-
 Rv<Extractor::Expr> Extractor::parse(Config &cfg, TextView format_string) {
   auto parser { swoc::bwf::Format::bind(format_string) };
   Expr fmt;

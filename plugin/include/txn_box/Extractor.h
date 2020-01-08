@@ -17,7 +17,6 @@
 #include <swoc/swoc_ip.h>
 
 #include "txn_box/common.h"
-#include "txn_box/Expr.h"
 #include "txn_box/Modifier.h"
 
 class Context;
@@ -34,7 +33,19 @@ class Extractor {
 public:
   /// Container for extractor factory.
   using Table = std::unordered_map<std::string_view, self_type *>;
-  using Spec = Expr::Spec;
+
+  /** Feature expression specifier.
+   * This is a subclass of the base format specifier, in order to add a field that points at
+   * the extractor, if any, for the specifier.
+   */
+  struct Spec : public swoc::bwf::Spec {
+    /// Extractor used in the spec, if any.
+    Extractor * _exf = nullptr;
+    /// Config storage for extractor, if needed.
+    swoc::MemSpan<void> _data;
+  };
+
+  using SpecArray = std::vector<Spec>; ///< Ordered list of specifiers.
 
   /** Expr extractor for BWF.
    * Walk the @c Expr and pull out the items for BWF.
@@ -42,15 +53,15 @@ public:
   class FmtEx {
   public:
     /// Construct with specifier sequence.
-    FmtEx(Expr::Specifiers const& specs) : _specs(specs), _iter(specs.begin()) {}
+    FmtEx(SpecArray const& specs) : _specs(specs), _iter(specs.begin()) {}
 
     /// Validity check.
     explicit operator bool() const { return _iter != _specs.end(); }
     /// Expr next literal and/or specifier.
     bool operator()(std::string_view& literal, Spec & spec);
   protected:
-    Expr::Specifiers const& _specs; ///< Specifiers in format.
-    Expr::Specifiers::const_iterator _iter; ///< Current specifier.
+    SpecArray const& _specs; ///< Specifiers in format.
+    SpecArray::const_iterator _iter; ///< Current specifier.
   };
 
   /** Validate the use of the extractor in a feature string.

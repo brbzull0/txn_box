@@ -291,9 +291,26 @@ protected:
    */
   swoc::Rv<Expr> parse_scalar_expr(YAML::Node node);
 
-  swoc::Rv<Expr> parse_unquoted_scalar(swoc::TextView const& text);
+  /** Parse an unquoted feature expression.
+   *
+   * @param text The unquoted text to parse. This must be non-empty.
+   * @return The expression, or errors on failure.
+   *
+   */
+  swoc::Rv<Expr> parse_unquoted_expr(swoc::TextView const& text);
 
-  Errata update_extractor(Expr::Spec &spec);
+  /** Update the (possible) extractor reference in @a spec.
+   *
+   * @param spec Specifier to update.
+   * @return Errors, if any.
+   *
+   * @a spec is updated in place. If it is an extractor the extractor pointer in @a spec is updated.
+   * This also validates the extractor can handle the @a spec details and enables config based
+   * storage allocation if needed by the extractor.
+   *
+   * @see Extractor::validate
+   */
+  Errata update_extractor(Extractor::Spec &spec);
 };
 
 inline Hook Config::current_hook() const { return _hook; }
