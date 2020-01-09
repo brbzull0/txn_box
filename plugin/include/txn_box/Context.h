@@ -17,6 +17,7 @@
 #include "txn_box/Rxp.h"
 #include "txn_box/Directive.h"
 #include "txn_box/Extractor.h"
+#include "txn_box/Expr.h"
 #include "txn_box/ts_util.h"
 #include <ts/remap.h>
 
@@ -89,7 +90,7 @@ public:
    *
    * @see commit
    */
-  Feature extract(Extractor::Expr const& fmt);
+  Feature extract(Expr const& fmt);
 
   /** Commit a feature.
    *

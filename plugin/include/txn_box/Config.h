@@ -16,6 +16,8 @@
 
 #include "txn_box/common.h"
 #include "txn_box/Extractor.h"
+#include "txn_box/Expr.h"
+#include "txn_box/FeatureGroup.h"
 #include "txn_box/Directive.h"
 #include "txn_box/yaml_util.h"
 
@@ -151,7 +153,7 @@ public:
    *
    * @see Context::extract
    */
-  swoc::Rv<Extractor::Expr> parse_feature(YAML::Node fmt_node, StrType str_type = StrType::VIEW);
+  swoc::Rv<Expr> parse_feature(YAML::Node fmt_node, StrType str_type = StrType::VIEW);
 
   /** Copy @a text to local storage in this instance.
    *
@@ -164,20 +166,8 @@ public:
   std::string_view& localize(std::string_view & text);
   swoc::TextView localize(std::string_view const& text) { swoc::TextView tv { text }; return this->localize(tv); }
 
-  /** Localized a format.
-   *
-   * @param fmt Expr to localize.
-   * @return @a this
-   *
-   * Localize all the strings in @a fmt, which is updated in place. If @a fmt is a pure literal
-   * it will be condensed in to a single item literal.
-   */
-  self_type & localize(Extractor::Expr & fmt);
-
   self_type& localize(Feature & feature);
 
-//  template < typename T > auto localize(T & data) -> typename std::enable_if<swoc::meta::is_any_of<T, feature_type_for<NIL>, feature_type_for<INTEGER>, feature_type_for<BOOLEAN>, feature_type_for<IP_ADDR>, feature_type_for<CONS>, feature_type_for<TUPLE>>::value, self_type&>::type { return *this; }
-//  template < typename T > auto localize(T & data) -> typename std::enable_if_t<swoc::meta::is_any_of<T, feature_type_for<NIL>, feature_type_for<INTEGER>, feature_type_for<BOOLEAN>, feature_type_for<IP_ADDR>, feature_type_for<CONS>, feature_type_for<TUPLE>>::value, self_type&> { return *this; }
   template < typename T > auto localize(T & data) -> EnableForFeatureTypes<T, self_type&> { return *this; }
 
   /** Allocate config space for an array of @a T.

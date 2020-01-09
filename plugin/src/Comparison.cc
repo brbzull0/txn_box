@@ -73,21 +73,21 @@ public:
   static const ValueMask TYPES;
 
 protected:
-  Extractor::Expr _value; ///< Single value for comparison.
-  std::vector<Extractor::Expr> _list; ///< List of values for comparison.
+  Expr _value; ///< Single value for comparison.
+  std::vector<Expr> _list; ///< List of values for comparison.
   bool _nc_p = false; ///< Case insensitive compare
   bool _rx_p = false; ///< Regular expression compare.
 
   /// Load up the string, accounting for extraction and types.
-  Errata load_exfmt(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node;
+  Errata load_exfmt(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node);
 
   /// Internal constructor used by @c load.
-  explicit StringComparison(Extractor::Expr && exf);
+  explicit StringComparison(Expr && exf);
 };
 
 const ValueMask StringComparison::TYPES { MaskFor(ValueType::STRING) };
 
-StringComparison::StringComparison(Extractor::Expr &&exf) : _value(std::move(exf)) {}
+StringComparison::StringComparison(Expr &&exf) : _value(std::move(exf)) {}
 
 Errata StringComparison::load_exfmt(Config &cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
   auto &&[exfmt, errata]{cfg.parse_feature(value_node)};
@@ -536,9 +536,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& cmp_node, YAML::Node const& key_node);
 
 protected:
-  Extractor::Expr _value_fmt;
+  Expr _value_fmt;
 
-  Cmp_Binary_Integer(Extractor::Expr && fmt) : _value_fmt(std::move(fmt)) {}
+  Cmp_Binary_Integer(Expr && fmt) : _value_fmt(std::move(fmt)) {}
 };
 
 template < bool P(feature_type_for<INTEGER>, feature_type_for<INTEGER>) >

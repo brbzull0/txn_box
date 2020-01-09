@@ -116,10 +116,19 @@ public:
 
   bool is_literal() const { return _expr.index() == NIL || _expr.index() == FEATURE; }
 
-  static self_type make_direct(Spec const& spec) {
-    Expr expr;
-    expr._expr.emplace<DIRECT>(spec);
-    return std::move(expr);
-  }
+  struct bwf_visitor {
+    bwf_visitor(Context & ctx) : _ctx(ctx) {}
 
+    Feature operator () (std::monostate const& nil) { return NIL_FEATURE; }
+    Feature operator () (Feature const& f) { return f; }
+    Feature operator () (Direct const& d) {
+      return static_cast<DirectFeature *>(d._spec._exf)->direct_view(_ctx, d._spec);
+    }
+    Feature operator () (Composite const& comp);
+    Feature operator () (Tuple const& tuple) {
+      return NIL_FEATURE;
+    }
+
+    Context& _ctx;
+  };
 };

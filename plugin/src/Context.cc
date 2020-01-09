@@ -134,38 +134,22 @@ void Context::operator()(swoc::BufferWriter& w, Extractor::Spec const& spec) {
   spec._exf->format(w, spec, *this);
 }
 
-Feature Context::extract(Extractor::Expr const &fmt) {
-  if (fmt._direct_p) {
-    return dynamic_cast<DirectFeature *>(fmt[0]._exf)->direct_view(*this, fmt[0]);
-  } else if (fmt._literal_p) {
-    return fmt._literal;
+Feature Expr::bwf_visitor::operator()(const Composite &comp) {
+  FixedBufferWriter w{_ctx._arena->remnant()};
+  // double write - try in the remnant first. If that suffices, done.
+  // Otherwise the size is now known and the needed space can be correctly allocated.
+  w.print_nfv(_ctx, bwf_ex{comp._specs}, Context::ArgPack(_ctx));
+  if (!w.error()) {
+    return w.view();
   } else {
-    switch (fmt._result_type) {
-      case STRING: {
-        FixedBufferWriter w{_arena->remnant()};
-        // double write - try in the remnant first. If that suffices, done.
-        // Otherwise the size is now known and the needed space can be correctly allocated.
-        w.print_nfv(*this, Extractor::FmtEx{fmt._specs}, ArgPack(*this));
-        if (fmt._force_c_string_p) {
-          w.write('\0');
-        }
-        if (!w.error()) {
-          return w.view();
-        } else {
-          FixedBufferWriter w2{_arena->require(w.extent()).remnant()};
-          w2.print_nfv(*this, Extractor::FmtEx{fmt._specs}, ArgPack(*this));
-          return w2.view();
-        }
-        break;
-      }
-      case IP_ADDR: break;
-      case INTEGER:
-      case BOOLEAN:
-      case VARIABLE:
-        return fmt[0]._exf->extract(*this, fmt[0]);
-    }
+    FixedBufferWriter w2{_ctx._arena->require(w.extent()).remnant()};
+    w2.print_nfv(_ctx, bwf_ex{comp._specs}, Context::ArgPack(_ctx));
+    return w2.view();
   }
-  return {};
+}
+
+Feature Context::extract(Expr const &expr) {
+  return std::visit(Expr::bwf_visitor(*this), expr._expr);
 }
 
 Context& Context::commit(Feature &feature) {

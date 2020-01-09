@@ -108,46 +108,6 @@ std::string_view & Config::localize(std::string_view & text) {
   return text = span.view();
 };
 
-Config& Config::localize(Extractor::Expr &fmt) {
-  if (fmt._literal_p) {
-    // Special case a "pure" literal - it's a format but all of the specifiers are literals.
-    // This can be consolidated into a "normal" STRING literal for the format. This is only way
-    // @a _literal_p can be set and specifiers in the @a fmt.
-    if (fmt.size() >= 1) {
-      size_t n = std::accumulate(fmt._specs.begin(), fmt._specs.end(), size_t{0}, [](size_t sum
-                                                                                     , Extractor::Spec const &spec) -> size_t { return sum += spec._ext.size(); });
-      if (fmt._force_c_string_p) {
-        ++n;
-      }
-
-      auto span{_arena.alloc(n).rebind<char>()};
-      fmt._literal = span.view();
-      for (auto const &spec : fmt._specs) {
-        memcpy(span.data(), spec._ext.data(), spec._ext.size());
-        span.remove_prefix(spec._ext.size());
-      }
-      if (fmt._force_c_string_p) {
-        span[0] = '\0';
-      }
-      fmt._force_c_string_p = false; // Already took care of this, don't do it again.
-      fmt._specs.clear();
-    } else {
-      this->localize(fmt._literal);
-    }
-  } else {
-    // Localize and update the names and extensions.
-    for (auto &spec : fmt._specs) {
-      if (! spec._name.empty()) {
-        this->localize(spec._name);
-      }
-      if (! spec._ext.empty()) {
-        this->localize(spec._ext);
-      }
-    }
-  }
-  return *this;
-}
-
 FeatureNodeStyle Config::feature_node_style(YAML::Node value) {
   if (value.IsScalar()) {
     return FeatureNodeStyle::SINGLE;
@@ -270,6 +230,9 @@ Rv<Expr> Config::parse_composite_expr(TextView const& text) {
   cexpr._specs = std::move(specs);
   for ( auto const& s : specs ) {
     expr._max_arg_idx = std::max(expr._max_arg_idx, s._idx);
+    if (s._exf) {
+      expr._ctx_ref_p = expr._ctx_ref_p || s._exf->has_ctx_ref();
+    }
   }
 
   return std::move(expr);
