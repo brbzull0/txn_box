@@ -291,6 +291,8 @@ protected:
    */
   swoc::Rv<Expr> parse_scalar_expr(YAML::Node node);
 
+  swoc::Rv<Expr> parse_composite_expr(swoc::TextView const& text);
+
   /** Parse an unquoted feature expression.
    *
    * @param text The unquoted text to parse. This must be non-empty.

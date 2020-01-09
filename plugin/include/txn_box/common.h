@@ -140,6 +140,10 @@ template < typename VISITOR > auto visit(VISITOR&& visitor, Feature const& featu
 } // namespace std
 /// @endcond
 
+inline ValueType ValueTypeOf(Feature const& f) {
+  constexpr std::array<ValueType, FeatureTypeList::size> T { NIL, STRING, INTEGER, IP_ADDR, BOOLEAN, CONS, TUPLE };
+  return T[f.index()];
+}
 /// Nil value feature.
 static constexpr Feature NIL_FEATURE;
 
@@ -236,6 +240,7 @@ inline bool is_empty(Feature const& feature) { return IndexFor(NIL) == feature.i
  *
  */
 Feature const& car(Feature const& feature);
+
 /** Drop the first element in @a feature.
  *
  * @param feature Feature sequence.

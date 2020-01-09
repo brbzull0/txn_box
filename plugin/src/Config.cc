@@ -220,6 +220,53 @@ Rv<Expr> Config::parse_unquoted_expr(swoc::TextView const& text) {
   return Expr{spec};
 }
 
+Rv<Expr> Config::parse_composite_expr(TextView const& text) {
+  auto parser { swoc::bwf::Format::bind(text) };
+  std::vector<Extractor::Spec> specs;
+  // Used to handle literals in @a format_string. Can't be const because it must be updated
+  // for each literal.
+  Extractor::Spec literal_spec;
+
+  literal_spec._type = Extractor::Spec::LITERAL_TYPE;
+
+  while (parser) {
+    Extractor::Spec spec;
+    std::string_view literal;
+    bool spec_p = parser(literal, spec);
+
+    if (!literal.empty()) {
+      literal_spec._ext = literal;
+      specs.push_back(literal_spec);
+    }
+
+    if (spec_p) {
+      if (spec._idx >= 0) {
+        specs.push_back(spec);
+      } else {
+        Errata errata = this->update_extractor(spec);
+        if (errata.is_ok()) {
+          specs.push_back(spec);
+        } else {
+          errata.info(R"(While parsing specifier at offset {}.)", text.size() - parser._fmt.size());
+          return std::move(errata);
+        }
+      }
+    }
+  }
+
+  // If it is a singleton, return it as one of the singleton types.
+  if (specs.size() == 1) {
+    if (specs[0]._exf) {
+      return Expr{specs[0]};
+    } else if (specs[0]._type == Extractor::Spec::LITERAL_TYPE) {
+      return Expr{FeatureView(this->localize(specs[0]._ext))};
+    } else {
+      return Error("Internal consistency error - specifier is neither an extractor nor a literal.");
+    }
+  }
+  // Multiple specifiers, check for overall properties.
+
+}
 
 Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
   Rv<Expr> zret;
@@ -227,9 +274,9 @@ Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
   if (text.empty()) { // no value at all
     return Expr{};
   } else if (node.Tag() == "?"_tv) { // unquoted, must be extractor.
-    zret = this->parse_unquoted_scalar(text);
+    zret = this->parse_unquoted_expr(text);
   } else {
-    zret = Extractor::parse(*this, text);
+    zret = this->parse_composite_expr(text);
   }
 
   if (zret.is_ok()) {

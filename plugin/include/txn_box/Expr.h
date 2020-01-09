@@ -32,7 +32,7 @@ public:
    *
    * The constructed instance will always be the literal @a f.
    */
-  Expr(Feature const& f) : _expr(f) {}
+  Expr(Feature const& f) : _expr(f), _result_type(ValueTypeOf(f)) {}
 
   Expr(Spec const& spec) {
     if (spec._exf && spec._exf->is_direct()) {
@@ -40,9 +40,24 @@ public:
     } else {
       auto & comp { _expr.emplace<Expr::COMPOSITE>() };
       comp._specs.push_back(spec);
-      comp._result_type = spec._exf->result_type();
+      _result_type = spec._exf->result_type();
     }
   }
+
+  /// Output generator for BWF on an expression.
+  class bwf_ex {
+  public:
+    /// Construct with specifier sequence.
+    bwf_ex(std::vector<Spec> const& specs) : _specs(specs), _iter(specs.begin()) {}
+
+    /// Validity check.
+    explicit operator bool() const { return _iter != _specs.end(); }
+    ///
+    bool operator()(std::string_view& literal, Spec & spec);
+  protected:
+    std::vector<Spec> const& _specs; ///< Specifiers in format.
+    std::vector<Spec>::const_iterator _iter; ///< Current specifier.
+  };
 
   /// Single extractor that generates a direct view.
   /// Always a @c STRING
@@ -53,11 +68,6 @@ public:
 
   /// A composite of extractors and literals.
   struct Composite {
-    /// Type of feature extracted by this format.
-    ValueType _result_type = ValueType::STRING;
-
-    int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
-
     /// Specifiers / elements of the parsed format string.
     std::vector<Spec> _specs;
 
@@ -92,6 +102,10 @@ public:
     COMPOSITE = 3,
     TUPLE = 4
   };
+
+  /// Feature type resulting from extraction of this expression.
+  ValueType _result_type = STRING;
+  int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
 
   /// Post extraction modifiers.
   std::vector<Modifier::Handle> _mods;

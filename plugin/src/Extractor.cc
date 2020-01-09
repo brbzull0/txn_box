@@ -50,83 +50,6 @@ Feature cdr(Feature const& feature) {
   return NIL_FEATURE; // No cdr unless explicitly supported.
 }
 /* ------------------------------------------------------------------------------------ */
-Extractor::Expr Extractor::literal(feature_type_for<NIL> nil) {
-  Expr fmt;
-  fmt._literal_p = true;
-  fmt._direct_p = false;
-  fmt._result_type = NIL;
-  fmt._literal = nil;
-  return std::move(fmt);
-}
-
-
-Extractor::Expr Extractor::literal(TextView text) {
-  Expr fmt;
-  fmt._literal_p = true;
-  fmt._direct_p = false;
-  fmt._literal = text;
-  fmt._result_type = STRING;
-  return std::move(fmt);
-}
-
-Extractor::Expr Extractor::literal(feature_type_for<INTEGER> n) {
-  Expr fmt;
-  fmt._literal_p = true;
-  fmt._direct_p = false;
-  fmt._literal = n;
-  fmt._result_type = INTEGER;
-  return std::move(fmt);
-}
-
-Extractor::Expr Extractor::literal(feature_type_for<IP_ADDR> const& addr) {
-  Expr fmt;
-  fmt._literal_p = true;
-  fmt._direct_p = false;
-  fmt._literal = addr;
-  fmt._result_type = IP_ADDR;
-  return std::move(fmt);
-}
-
-Rv<Extractor::Expr> Extractor::parse(Config &cfg, TextView format_string) {
-  auto parser { swoc::bwf::Format::bind(format_string) };
-  Expr fmt;
-  Errata zret;
-  // Used to handle literals in @a format_string. Can't be const because it must be updated
-  // for each literal.
-  Spec literal_spec;
-
-  literal_spec._type = swoc::bwf::Spec::LITERAL_TYPE;
-
-  while (parser) {
-    Spec spec;
-    std::string_view literal;
-    bool spec_p = parser(literal, spec);
-
-    if (!literal.empty()) {
-      literal_spec._ext = literal;
-      fmt.push_back(literal_spec);
-    }
-
-    if (spec_p) {
-      if (spec._idx >= 0) {
-        fmt.push_back(spec);
-      } else {
-        zret = self_type::update_extractor(cfg, spec);
-        if (zret.is_ok()) {
-          fmt.push_back(spec);
-        } else {
-          zret.info(R"(While parsing specifier at offset {}.)", format_string.size() - parser._fmt.size());
-        }
-      }
-    }
-  }
-  if (fmt._specs.size() == 1 && fmt._specs[0]._exf) {
-    Spec const& spec { fmt._specs[0] };
-    fmt._direct_p = spec._exf->is_direct();
-    fmt._result_type = spec._exf->result_type();
-  }
-  return { std::move(fmt), std::move(zret) };
-}
 
 Errata Extractor::define(TextView name, self_type * ex) {
   _ex_table[name] = ex;
@@ -135,33 +58,6 @@ Errata Extractor::define(TextView name, self_type * ex) {
 
 bool Extractor::has_ctx_ref() const { return false; }
 
-/* ------------------------------------------------------------------------------------ */
-
-Extractor::Expr::self_type & Extractor::Expr::push_back(Extractor::Spec const &spec) {
-  _specs.push_back(spec);
-  // update properties.
-  if (spec._type != swoc::bwf::Spec::LITERAL_TYPE) {
-    _literal_p = false;
-    _max_arg_idx = std::max(_max_arg_idx, spec._idx);
-  }
-  return *this;
-}
-
-bool Extractor::FmtEx::operator()(std::string_view &literal, Extractor::Spec &spec) {
-  bool zret = false;
-  if (_iter->_type == swoc::bwf::Spec::LITERAL_TYPE) {
-    literal = _iter->_ext;
-    if (++_iter == _specs.end()) { // all done!
-      return zret;
-    }
-  }
-  if (_iter->_type != swoc::bwf::Spec::LITERAL_TYPE) {
-    spec = *_iter;
-    ++_iter;
-    zret = true;
-  }
-  return zret;
-}
 /* ---------------------------------------------------------------------------------------------- */
 auto FeatureGroup::Tracking::find(swoc::TextView const &name) -> Tracking::Info * {
   Info * spot  = std::find_if(_info.begin(), _info.end(), [&](auto & t) { return 0 == strcasecmp(t._name, name); });

@@ -9,6 +9,7 @@
 
 #include "txn_box/Context.h"
 #include "txn_box/Config.h"
+#include "txn_box/Expr.h"
 #include "txn_box/ts_util.h"
 
 using swoc::TextView;
@@ -17,6 +18,24 @@ using swoc::Errata;
 using swoc::BufferWriter;
 using swoc::FixedBufferWriter;
 using namespace swoc::literals;
+
+/* ------------------------------------------------------------------------------------ */
+bool Expr::bwf_ex::operator()(std::string_view &literal, Extractor::Spec &spec) {
+  bool zret = false;
+  if (_iter->_type == swoc::bwf::Spec::LITERAL_TYPE) {
+    literal = _iter->_ext;
+    if (++_iter == _specs.end()) { // all done!
+      return zret;
+    }
+  }
+  if (_iter->_type != swoc::bwf::Spec::LITERAL_TYPE) {
+    spec = *_iter;
+    ++_iter;
+    zret = true;
+  }
+  return zret;
+}
+/* ------------------------------------------------------------------------------------ */
 
 Context::Context(std::shared_ptr<Config> const& cfg) : _cfg(cfg) {
   // This is arranged so @a _arena destructor will clean up properly, nothing more need be done.

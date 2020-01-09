@@ -45,25 +45,6 @@ public:
     swoc::MemSpan<void> _data;
   };
 
-  using SpecArray = std::vector<Spec>; ///< Ordered list of specifiers.
-
-  /** Expr extractor for BWF.
-   * Walk the @c Expr and pull out the items for BWF.
-   */
-  class FmtEx {
-  public:
-    /// Construct with specifier sequence.
-    FmtEx(SpecArray const& specs) : _specs(specs), _iter(specs.begin()) {}
-
-    /// Validity check.
-    explicit operator bool() const { return _iter != _specs.end(); }
-    /// Expr next literal and/or specifier.
-    bool operator()(std::string_view& literal, Spec & spec);
-  protected:
-    SpecArray const& _specs; ///< Specifiers in format.
-    SpecArray::const_iterator _iter; ///< Current specifier.
-  };
-
   /** Validate the use of the extractor in a feature string.
    *
    * @param cfg Configuration.
@@ -123,36 +104,6 @@ public:
    */
   virtual swoc::BufferWriter & format(swoc::BufferWriter& w, Spec const& spec, Context & ctx) = 0;
 
-  /** Parse a format string.
-   *
-   * @param cfg Configuration instance.
-   * @param format_string Expr string.
-   * @return The format instance or errors on failure.
-   */
-  static swoc::Rv<Expr> parse(Config &cfg, swoc::TextView format_string);
-
-  /** Parse a raw string.
-   *
-   * @param text Extractor text.
-   * @return A format for the extractor, or errors.
-   *
-   * This is useful for parsing a string which is presumed to be a single extractor.
-   */
-  static swoc::Rv <Extractor::Expr> parse_raw(Config &cfg, swoc::TextView text);
-
-  /** Create a format string as a literal.
-   *
-   * @param format_string Expr string.
-   * @return The format instance.
-   *
-   * This does no parsing of @a format_string. It will return a format that outputs @a format_string
-   * literally. This format will always have default formatting and no extension.
-   */
-  static Expr literal(swoc::TextView format_string);
-  static Expr literal(feature_type_for<NIL> nil);
-  static Expr literal(feature_type_for<INTEGER> format_string);
-  static Expr literal(feature_type_for<IP_ADDR> const& format_string);
-
   /** Define @a name as the extractor @a ex.
    *
    * @param name Name of the extractor.
@@ -163,6 +114,11 @@ public:
    */
   static swoc::Errata define(swoc::TextView name, self_type * ex);
 
+  /** Find the extractor for @a name.
+   *
+   * @param name Extractor name.
+   * @return A pointer to the extractor, @c nullptr if not found.
+   */
   static self_type* find(swoc::TextView const& name) {
     auto spot { _ex_table.find(name)};
     return spot == _ex_table.end() ? nullptr : spot->second;
