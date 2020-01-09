@@ -265,7 +265,14 @@ Rv<Expr> Config::parse_composite_expr(TextView const& text) {
     }
   }
   // Multiple specifiers, check for overall properties.
+  Expr expr;
+  auto & cexpr = expr._expr.emplace<Expr::COMPOSITE>();
+  cexpr._specs = std::move(specs);
+  for ( auto const& s : specs ) {
+    expr._max_arg_idx = std::max(expr._max_arg_idx, s._idx);
+  }
 
+  return std::move(expr);
 }
 
 Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
@@ -283,20 +290,18 @@ Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
     auto & expr = zret.result();
     if (expr._max_arg_idx >= 0) {
       if (!_rxp_group_state || _rxp_group_state->_rxp_group_count == 0) {
-        return Error(R"(Extracting capture group at {} but no regular expression is active.)", fmt_node.Mark());
+        return Error(R"(Regular expression capture group used at {} but no regular expression is active.)", node.Mark());
       } else if (expr._max_arg_idx >= _rxp_group_state->_rxp_group_count) {
-        return Error(R"(Extracting capture group {} at {} but the maximum capture group is {} in the active regular expression from line {}.)", exfmt._max_arg_idx, fmt_node.Mark(), _rxp_group_state->_rxp_group_count-1, _rxp_group_state->_rxp_line);
+        return Error(R"(Regular expression capture group {} used at {} but the maximum capture group is {} in the active regular expression from line {}.)"
+            , expr._max_arg_idx, node.Mark(), _rxp_group_state->_rxp_group_count-1, _rxp_group_state->_rxp_line);
       }
     }
 
     if (expr._ctx_ref_p && _feature_state && _feature_state->_feature_ref_p) {
       _feature_state->_feature_ref_p = true;
     }
-
-    this->localize(exfmt);
   }
   return std::move(zret);
-
 }
 
 Rv<Expr> Config::parse_expr(YAML::Node expr_node) {

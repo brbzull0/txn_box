@@ -41,6 +41,7 @@ public:
       auto & comp { _expr.emplace<Expr::COMPOSITE>() };
       comp._specs.push_back(spec);
       _result_type = spec._exf->result_type();
+      _max_arg_idx = spec._idx;
     }
   }
 
@@ -105,7 +106,10 @@ public:
 
   /// Feature type resulting from extraction of this expression.
   ValueType _result_type = STRING;
-  int _max_arg_idx = -1; ///< Largest argument index. -1 => no numbered arguments.
+  /// Contains an extractor the references context data.
+  bool _ctx_ref_p = false;
+  ///< Largest argument index. -1 => no numbered arguments.
+  int _max_arg_idx = -1;
 
   /// Post extraction modifiers.
   std::vector<Modifier::Handle> _mods;
