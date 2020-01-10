@@ -90,7 +90,7 @@ public:
 
   struct Tuple {
     /// Expressions which are the elements of the tuple.
-    std::vector<std::unique_ptr<self_type>> _exprs;
+    std::vector<self_type> _exprs;
   };
 
   /// Concrete types for a specific expression.
@@ -125,9 +125,7 @@ public:
       return static_cast<DirectFeature *>(d._spec._exf)->direct_view(_ctx, d._spec);
     }
     Feature operator () (Composite const& comp);
-    Feature operator () (Tuple const& tuple) {
-      return NIL_FEATURE;
-    }
+    Feature operator () (Tuple const& tuple);
 
     Context& _ctx;
   };

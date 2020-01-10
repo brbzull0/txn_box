@@ -267,6 +267,30 @@ Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
   return std::move(zret);
 }
 
+Rv<Expr> Config::parse_expr_with_mods(YAML::Node node) {
+  auto && [ expr, expr_errata ] { this->parse_expr(node[0])};
+  if (! expr_errata.is_ok()) {
+    expr_errata.info("While processing the expression at {}.", node);
+    return std::move(expr_errata);
+  }
+
+  for ( unsigned idx = 1 ; idx < node.size() ; ++idx ) {
+    auto child { node[idx] };
+    auto && [ mod, mod_errata ] {Modifier::load(*this, child, expr._result_type) };
+    if (! mod_errata.is_ok()) {
+      mod_errata.info(R"(While parsing feature expression at {}.)", child.Mark(), node.Mark());
+      return std::move(mod_errata);
+    }
+    if (_feature_state) {
+      _feature_state->_type = mod->result_type();
+    }
+    expr._mods.emplace_back(std::move(mod));
+    expr._result_type = mod->result_type();
+  }
+
+  return std::move(expr);
+}
+
 Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
   std::string_view expr_tag(expr_node.Tag());
 
@@ -292,104 +316,39 @@ Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
   if (! expr_node.IsSequence()) {
     return Error("Feature expression is not properly structured.");
   }
-  switch (expr_node.size()) {
-    case 0:return Expr{NIL_FEATURE};
-    case 1: return this->parse_scalar_expr(expr_node[0]);
-    default:
-      break;
+
+  // It's a sequence, handle the various cases.
+  if (expr_node.size() == 0) {
+    return Expr{NIL_FEATURE};
   }
-}
-
-Rv<Extractor::Expr> Config::parse_feature(YAML::Node fmt_node, StrType str_type) {
-  // Unfortunately, lots of special cases here.
-
-  std::string_view fmt_tag(fmt_node.Tag());
-  // If explicitly marked a literal, then no further processing should be done.
-  if (0 == strcasecmp(fmt_tag, LITERAL_TAG)) {
-    if (!fmt_node.IsScalar()) {
-      return Error(R"("!{}" tag used on value at {} which is not a string as required for a literal.)", LITERAL_TAG, fmt_node.Mark());
-    }
-    auto const& text = fmt_node.Scalar();
-    if (StrType::C == str_type) {
-      return Extractor::literal(TextView{text.c_str(), text.size() + 1});
-    }
-    return Extractor::literal(TextView{text.data(), text.size()});
-  } else if (0 != strcasecmp(fmt_tag, "?"_sv) && 0 != strcasecmp(fmt_tag, "!"_sv)) {
-    return Error(R"("{}" tag for extractor expression is not supported.)", fmt_tag);
+  if (expr_node.size() == 1) {
+    return this->parse_scalar_expr(expr_node[0]);
   }
 
-  if (fmt_node.IsNull()) { // explicit NULL
-    return Extractor::literal(feature_type_for<NIL>{}); // Treat as equivalent of the empty string.
-  } else if (fmt_node.IsScalar()) {
-    // Scalar case - is is quotes, forcing a string?
-    Rv<Extractor::Expr> result;
-    TextView text { fmt_node.Scalar() };
-    if (text.empty()) { // no value at all
-      result = Extractor::literal(""_tv); // if used, act like an empty string.
-      result.result()._result_type = NO_VALUE;
-      return std::move(result); // NO_VALUE literal can't fail, can't have any other properties, just return.
-    } else if (fmt_node.Tag() == "?"_tv) { // unquoted, must be extractor.
-      result = Extractor::parse_raw(*this, text);
+  if (expr_node[1].IsMap()) { // base expression with modifiers.
+    return this->parse_expr_with_mods(expr_node);
+  }
+
+  // Else, after all this, it's a tuple, treat each element as an expression.
+  std::vector<Expr> xa;
+  xa.reserve(expr_node.size());
+  for ( auto const& child : expr_node ) {
+    auto && [ expr , errata ] { this->parse_expr(child) };
+    if (errata.is_ok()) {
+      xa.emplace_back(std::move(expr));
     } else {
-      result = Extractor::parse(*this, text);
+      errata.info("While parsing feature expression list at {}.", expr_node.Mark());'
+      return std::move(errata);
     }
-
-    if (result.is_ok()) {
-      auto & exfmt = result.result();
-      if (exfmt._max_arg_idx >= 0) {
-        if (!_rxp_group_state || _rxp_group_state->_rxp_group_count == 0) {
-          return Error(R"(Extracting capture group at {} but no regular expression is active.)", fmt_node.Mark());
-        } else if (exfmt._max_arg_idx >= _rxp_group_state->_rxp_group_count) {
-          return Error(R"(Extracting capture group {} at {} but the maximum capture group is {} in the active regular expression from line {}.)", exfmt._max_arg_idx, fmt_node.Mark(), _rxp_group_state->_rxp_group_count-1, _rxp_group_state->_rxp_line);
-        }
-      }
-
-      if (exfmt._ctx_ref_p && _feature_state && _feature_state->_feature_ref_p) {
-        _feature_state->_feature_ref_p = true;
-      }
-
-      exfmt._force_c_string_p = StrType::C == str_type;
-      this->localize(exfmt);
-    }
-    return std::move(result);
-  } else if (fmt_node.IsSequence()) {
-    // empty list is treated as an empty string.
-    if (fmt_node.size() < 1) {
-      auto exfmt { Extractor::literal(TextView{}) };
-      exfmt._force_c_string_p = StrType::C == str_type;
-      return std::move(exfmt);
-    }
-
-    auto str_node { fmt_node[0] };
-    if (! str_node.IsScalar()) {
-      return Error(R"(Value at {} in list at {} is not a string as required.)", str_node.Mark(), fmt_node.Mark());
-    }
-
-    auto &&[fmt, errata]{Extractor::parse(*this, str_node.Scalar())};
-    if (! errata.is_ok()) {
-      errata.info(R"(While parsing extractor format at {} in modified string at {}.)", str_node.Mark(), fmt_node.Mark());
-      return { {}, std::move(errata) };
-    }
-
-    fmt._force_c_string_p = StrType::C == str_type;
-    this->localize(fmt);
-
-    for ( unsigned idx = 1 ; idx < fmt_node.size() ; ++idx ) {
-      auto child { fmt_node[idx] };
-      auto && [ mod, mod_errata ] {Modifier::load(*this, child, fmt._result_type) };
-      if (! mod_errata.is_ok()) {
-        mod_errata.info(R"(While parsing modifier {} in modified string at {}.)", child.Mark(), fmt_node.Mark());
-        return { {}, std::move(mod_errata) };
-      }
-      if (_feature_state) {
-        _feature_state->_type = mod->result_type();
-      }
-      fmt._mods.emplace_back(std::move(mod));
-    }
-    return { std::move(fmt), {} };
   }
 
-  return Error(R"(Value at {} is not a string or list as required.)", fmt_node.Mark());
+  Expr expr;
+  auto & tuple = expr._expr.emplace<Expr::TUPLE>();
+  tuple._exprs.reserve(xa.size());
+  for ( auto && x : xa) {
+    tuple._exprs.emplace_back(std::move(x));
+  }
+  return std::move(expr);
 }
 
 Rv<Directive::Handle> Config::load_directive(YAML::Node const& drtv_node)

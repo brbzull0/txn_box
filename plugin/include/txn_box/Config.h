@@ -291,6 +291,8 @@ protected:
    */
   swoc::Rv<Expr> parse_unquoted_expr(swoc::TextView const& text);
 
+  swoc::Rv<Expr> parse_expr_with_mods(YAML::Node node);
+
   /** Update the (possible) extractor reference in @a spec.
    *
    * @param spec Specifier to update.

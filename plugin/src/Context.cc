@@ -148,6 +148,16 @@ Feature Expr::bwf_visitor::operator()(const Composite &comp) {
   }
 }
 
+Feature Expr::bwf_visitor::operator()(const Tuple &tuple) {
+  auto expr_tuple = _ctx._arena->make<feature_type_for<ValueType::TUPLE>>();
+  unsigned idx = 0;
+  for ( auto const& expr : tuple._exprs ) {
+    Feature feature { _ctx.extract(expr) };
+    (*expr_tuple)[idx++] = feature;
+  }
+  return *expr_tuple;
+}
+
 Feature Context::extract(Expr const &expr) {
   return std::visit(Expr::bwf_visitor(*this), expr._expr);
 }
