@@ -198,6 +198,13 @@ public:
     return _rxp_capture;
   }
 
+  void set_literal_capture(swoc::TextView text) {
+    auto ovector = pcre2_get_ovector_pointer(_rxp_capture);
+    ovector[0] = 0;
+    ovector[1] = text.size()-1;
+    _rxp_src = text;
+  }
+
   self_type & store_txn_var(swoc::TextView const& name, Feature && value) {
     return this->store_txn_var(name, value);
   }

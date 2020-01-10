@@ -337,7 +337,7 @@ Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
     if (errata.is_ok()) {
       xa.emplace_back(std::move(expr));
     } else {
-      errata.info("While parsing feature expression list at {}.", expr_node.Mark());'
+      errata.info("While parsing feature expression list at {}.", expr_node.Mark());
       return std::move(errata);
     }
   }

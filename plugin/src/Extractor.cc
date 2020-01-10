@@ -77,10 +77,11 @@ FeatureGroup::index_type FeatureGroup::exf_index(swoc::TextView const &name) {
   return spot == _exf_info.end() ? INVALID_IDX : spot - _exf_info.begin();
 }
 Errata FeatureGroup::load_fmt(Config & cfg, Tracking& info, YAML::Node const &node) {
-  auto && [ fmt, errata ] { cfg.parse_feature(node) };
+  auto && [ expr, errata ] { cfg.parse_expr(node) };
   if (errata.is_ok()) {
     // Walk the items to see if any are cross references.
-    for ( auto & item : fmt ) {
+    #if 0
+    for ( auto & item : expr ) {
       if (item._exf == &ex_this) {
         errata = this->load_key(cfg, info, item._ext);
         if (! errata.is_ok()) {
@@ -90,6 +91,7 @@ Errata FeatureGroup::load_fmt(Config & cfg, Tracking& info, YAML::Node const &no
         item._exf = &_ex_this;
       }
     }
+    #endif
   }
   info._fmt_array.emplace_back(std::move(fmt));
   return std::move(errata);
@@ -218,7 +220,7 @@ Errata FeatureGroup::load(Config & cfg, YAML::Node const& node, std::initializer
       dst._ex = ExfInfo::Multi{};
       ExfInfo::Multi & m = std::get<ExfInfo::MULTI>(dst._ex);
       m._fmt.reserve(src._fmt_count);
-      for ( auto & fmt : MemSpan<Extractor::Expr>{&tracking._fmt_array[src._fmt_idx], src._fmt_count } ) {
+      for ( auto & fmt : MemSpan<Expr>{&tracking._fmt_array[src._fmt_idx], src._fmt_count } ) {
         m._fmt.emplace_back(std::move(fmt));
       }
     } else {

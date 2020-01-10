@@ -39,7 +39,7 @@ public:
   // Factory that maps from names to assemblers.
   using Factory = std::unordered_map<swoc::TextView, std::tuple<Loader, ValueMask>, std::hash<std::string_view>>;
 
-  /** Number of regular expression capture groups.
+  /** Number of regular expression capture groups provided by a match.
    *
    * @return The number of capture groups, or 0 if it is not a regular expression.
    *

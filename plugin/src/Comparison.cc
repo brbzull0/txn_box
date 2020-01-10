@@ -6,6 +6,7 @@
  */
 
 #include <string>
+#include <algorithm>
 
 #include <swoc/bwf_base.h>
 
@@ -63,8 +64,8 @@ Rv<Comparison::Handle> Comparison::load(Config & cfg, ValueType ftype, YAML::Nod
 /** Utility base class for comparisons that are based on literal string matching.
  * This is @b not intended to be used as a comparison itself.
  */
-class StringComparison: public Comparison {
-  using self_type = StringComparison; ///< Self reference type.
+class Cmp_String: public Comparison {
+  using self_type = Cmp_String; ///< Self reference type.
   using super_type = Comparison; ///< Parent type.
 public:
   static constexpr TextView NO_CASE_OPT { "nc" };
@@ -72,56 +73,134 @@ public:
   /// Mark for @c STRING support only.
   static const ValueMask TYPES;
 
+  /** Compare @a text for a match.
+   *
+   * @param ctx The transaction context.
+   * @param text The feature to compare.
+   * @return @c true if @a text matches, @c false otherwise.
+   */
+  bool operator() (Context& ctx, FeatureView& text) const override;
+
+  /** Instantiate an instance from YAML configuration.
+   *
+   * @param cfg Global configuration object.
+   * @param cmp_node The node containing the comparison.
+   * @param key_node The node in @a cmp_node that identified this comparison.
+   * @return An instance or errors on failure.
+   */
+  static Rv<Handle> load(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node key_node);
+
 protected:
-  Expr _value; ///< Single value for comparison.
-  std::vector<Expr> _list; ///< List of values for comparison.
-  bool _nc_p = false; ///< Case insensitive compare
-  bool _rx_p = false; ///< Regular expression compare.
+  Expr _expr; ///< Expression to compare with.
+
+  /** Specialized comparison.
+   *
+   * @param ctx Runtime context.
+   * @param text Configured value to check with.
+   * @param active Active value to be compred to configured value.
+   * @return @c true on match @c false otherwise.
+   *
+   * This class will handle extracting the stored expression and pass it piecewise (if needed)
+   * to the specialized subclass. @a text is the extracted text, @a active is the value passed
+   * in at run time to check.
+   */
+  virtual bool operator()(Context & ctx, TextView const& text, FeatureView & active) const = 0;
 
   /// Load up the string, accounting for extraction and types.
-  Errata load_exfmt(Config& cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node);
+  Errata load_expr(Config& cfg, YAML::Node const& cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node);
 
   /// Internal constructor used by @c load.
-  explicit StringComparison(Expr && exf);
+  explicit Cmp_String(Expr && expr);
 };
 
-const ValueMask StringComparison::TYPES { MaskFor(ValueType::STRING) };
+bool Cmp_String::operator()(Context &ctx, FeatureView &active) const {
+  Feature f { ctx.extract(_expr)};
+  if (auto view = std::get_if<IndexFor(STRING)>(&f) ; nullptr != view) {
+    return (*this)(ctx, *view, active);
+  } else if ( auto t = std::get_if<IndexFor(TUPLE)>(&f) ; nullptr != t) {
+    return std::any_of(t->begin(), t->end(), [&](Feature * f) -> bool {
+      auto view = std::get_if<IndexFor(STRING)>(f);
+      return view && (*this)(ctx, *view, active);
+    });
+  }
+  return false;
+}
 
-StringComparison::StringComparison(Expr &&exf) : _value(std::move(exf)) {}
+// ---
+// Specialized subclasses for the various options.
 
-Errata StringComparison::load_exfmt(Config &cfg, YAML::Node cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
-  auto &&[exfmt, errata]{cfg.parse_feature(value_node)};
+/// Match entire string.
+class Cmp_MatchStd : public Cmp_String {
+protected:
+  using Cmp_String::Cmp_String;
+  bool operator() (Context & ctx, TextView const& text, FeatureView & active) const override;
+};
+
+bool Cmp_MatchStd::operator()(Context& ctx, TextView const& text, FeatureView & active) const {
+  if (text == active) {
+    ctx.set_literal_capture(active);
+    active = TextView{}; // matched everything, clear active feature.
+    return true;
+  }
+  return false;
+}
+
+/// Match entire string, ignoring case
+class Cmp_MatchNC : public Cmp_String {
+protected:
+  using Cmp_String::Cmp_String;
+  bool operator() (Context & ctx, TextView const& text, FeatureView & active) const override;
+};
+
+bool Cmp_MatchNC::operator()(Context& ctx, TextView const& text, FeatureView & active) const {
+  if (0 == strcasecmp(text,active)) {
+    ctx.set_literal_capture(active);
+    active = TextView{}; // matched everything, clear active feature.
+    return true;
+  }
+  return false;
+}
+// ---
+
+const ValueMask Cmp_String::TYPES {MaskFor(ValueType::STRING) };
+
+Cmp_String::Cmp_String(Expr && expr) : _expr(std::move(expr)) {}
+
+Errata Cmp_String::load_expr(Config &cfg, YAML::Node const& cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
+  auto &&[expr, errata]{cfg.parse_expr(value_node)};
 
   if (!errata.is_ok()) {
     errata.info(R"(While parsing comparison "{}" at {}.)", key, cmp_node.Mark());
     return std::move(errata);
   }
 
-  if (!TYPES[IndexFor(exfmt._result_type)]) {
+  if (!TYPES[IndexFor(expr._result_type)]) {
     errata.error(R"(Value type "{}" for comparison "{}" at {} is not supported.)"
-                 , exfmt._result_type, key, cmp_node.Mark());
+                 , expr._result_type, key, cmp_node.Mark());
     return std::move(errata);
   }
 
   auto options = arg;
+  bool nc_p = false, rx_p = false;
   while (options) {
     auto token = options.take_prefix_at(',');
-    if (NO_CASE_OPT == token) {
-      _nc_p = true;
-    } else if (REGEX_OPT == token) {
-      _rx_p = true;
+    if (0 == strcasecmp(NO_CASE_OPT, token)) {
+      nc_p = true;
+    } else if (0 == strcasecmp(REGEX_OPT, token)) {
+      rx_p = true;
     } else {
       return Error(R"("{}" is not a valid option for comparison "{}".)", token, key);
     }
   }
+
   return {};
 }
 
 /* ------------------------------------------------------------------------------------ */
-/// Direct / exact string matching.
-class Cmp_Match : public StringComparison {
+/// Full string match.
+class Cmp_Match : public Cmp_String {
   using self_type = Cmp_Match;
-  using super_type = StringComparison;
+  using super_type = Cmp_String;
 public:
   /// Identifier for this comparison.
   static const std::string KEY;
@@ -150,7 +229,7 @@ protected:
 const std::string Cmp_Match::KEY { "match" };
 
 bool Cmp_Match::operator()(Context& ctx, FeatureView& text) const {
-  Feature feature { ctx.extract(_value) };
+  Feature feature { ctx.extract(_expr) };
   return text == std::get<STRING>(feature);
 }
 
@@ -165,9 +244,9 @@ Rv<Comparison::Handle> Cmp_Match::load(Config& cfg, YAML::Node cmp_node, TextVie
 
 /* ------------------------------------------------------------------------------------ */
 /// Direct / exact string matching, case insensitive.
-class Cmp_MatchNocase : public StringComparison {
+class Cmp_MatchNocase : public Cmp_String {
   using self_type = Cmp_MatchNocase;
-  using super_type = StringComparison;
+  using super_type = Cmp_String;
 public:
   /// Identifier for this comparison.
   static const std::string KEY;
@@ -212,9 +291,9 @@ Rv<Comparison::Handle> Cmp_MatchNocase::load(Config& cfg, YAML::Node cmp_node, Y
 /** Compare a suffix.
  * This matches if the suffix of the feature is the same as the static value.
  */
-class Cmp_Suffix : public StringComparison {
+class Cmp_Suffix : public Cmp_String {
   using self_type = Cmp_Suffix; ///< Self reference type.
-  using super_type = StringComparison; ///< Parent type.
+  using super_type = Cmp_String; ///< Parent type.
 public:
   /// Name of comparison.
   static const std::string KEY;
@@ -248,9 +327,9 @@ Rv<Comparison::Handle> Cmp_Suffix::load(Config &cfg, YAML::Node cmp_node, YAML::
 /** Compare a suffix.
  * This matches if the suffix of the feature is the same as the static value.
  */
-class Cmp_SuffixNocase : public StringComparison {
+class Cmp_SuffixNocase : public Cmp_String {
   using self_type = Cmp_SuffixNocase; ///< Self reference type.
-  using super_type = StringComparison; ///< Parent type.
+  using super_type = Cmp_String; ///< Parent type.
 public:
   /// Name of comparison.
   static const std::string KEY;
@@ -284,9 +363,9 @@ Rv<Comparison::Handle> Cmp_SuffixNocase::load(Config &cfg, YAML::Node cmp_node, 
 /** Compare a prefix.
  * This matches if the prefix of the feature is the same as the static value.
  */
-class Cmp_Prefix : public StringComparison {
+class Cmp_Prefix : public Cmp_String {
   using self_type = Cmp_Prefix; ///< Self reference type.
-  using super_type = StringComparison; ///< Parent type.
+  using super_type = Cmp_String; ///< Parent type.
 public:
   /// Name of comparison.
   static const std::string KEY;
@@ -320,9 +399,9 @@ Rv<Comparison::Handle> Cmp_Prefix::load(Config &cfg, YAML::Node cmp_node, YAML::
 /** Compare a prefix.
  * This matches if the prefix of the feature is the same as the static value.
  */
-class Cmp_PrefixNocase : public StringComparison {
+class Cmp_PrefixNocase : public Cmp_String {
   using self_type = Cmp_PrefixNocase; ///< Self reference type.
-  using super_type = StringComparison; ///< Parent type.
+  using super_type = Cmp_String; ///< Parent type.
 public:
   /// Name of comparison.
   static const std::string KEY;

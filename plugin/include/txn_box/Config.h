@@ -141,20 +141,6 @@ public:
    */
   swoc::Rv<Expr> parse_expr(YAML::Node fmt_node);
 
-  /** Parse a node as a feature extractor.
-   *
-   * @param fmt_node The node with the extractor.
-   * @param str_type Standard view or C string.
-   * @return The condensed extractor format or errors on failure.
-   *
-   * This does extensive work for handle the various feature extraction capabilities. This should
-   * be bypassed only in extreme cases where very specialized handling is needed. The result of
-   * this can be passed to @c Context::extract to get the actual value at runtime.
-   *
-   * @see Context::extract
-   */
-  swoc::Rv<Expr> parse_feature(YAML::Node fmt_node, StrType str_type = StrType::VIEW);
-
   /** Copy @a text to local storage in this instance.
    *
    * @param text Text to copy.

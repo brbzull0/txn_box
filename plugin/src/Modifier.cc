@@ -161,9 +161,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node mod_node, YAML::Node key_node);
 
 protected:
-  Extractor::Expr _value;
+  Expr _value;
 
-  explicit Mod_Else(Extractor::Expr && fmt) : _value(std::move(fmt)) {}
+  explicit Mod_Else(Expr && fmt) : _value(std::move(fmt)) {}
 };
 
 const std::string Mod_Else::KEY { "else" };
@@ -184,7 +184,7 @@ Errata Mod_Else::operator()(Context &ctx, Feature &feature) {
 }
 
 Rv<Modifier::Handle> Mod_Else::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
-  auto && [ fmt, errata ] { cfg.parse_feature(key_node) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_node) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" modifier at {}.)", KEY, key_node.Mark());
     return std::move(errata);
@@ -229,9 +229,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node mod_node, YAML::Node key_node);
 
 protected:
-  Extractor::Expr _value; ///< Default value.
+  Expr _value; ///< Default value.
 
-  explicit Mod_As_Integer(Extractor::Expr && fmt) : _value(std::move(fmt)) {}
+  explicit Mod_As_Integer(Expr && fmt) : _value(std::move(fmt)) {}
 
   /// Identity conversion.
   Feature convert(Context & ctx, feature_type_for<INTEGER> n) { return n; }
