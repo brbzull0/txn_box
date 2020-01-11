@@ -42,12 +42,15 @@ Context::Context(std::shared_ptr<Config> const& cfg) : _cfg(cfg) {
   _arena.reset(swoc::MemArena::construct_self_contained(4000 + (cfg ? cfg->_ctx_storage_required : 0)));
 
   if (cfg) {
-    // Provide local storage for regex capture groups.
     _rxp_ctx = pcre2_general_context_create([](PCRE2_SIZE size
                                                , void *ctx) -> void * { return static_cast<self_type *>(ctx)->_arena->alloc(size).data(); }
                                             , [](void *, void *) -> void {}, this);
-    _rxp_capture = pcre2_match_data_create(cfg->_capture_groups, _rxp_ctx);
-    _rxp_working = pcre2_match_data_create(cfg->_capture_groups, _rxp_ctx);
+    // Pre-allocate match data for the maximum # of capture groups in the configuration.
+    // This avoids multiple allocations due to the order of which matches are done first.
+    _rxp_working._match = pcre2_match_data_create(cfg->_capture_groups, _rxp_ctx);
+    _rxp_working._n = cfg->_capture_groups;
+    _rxp_active._match = pcre2_match_data_create(cfg->_capture_groups, _rxp_ctx);
+    _rxp_active._n = cfg->_capture_groups;
 
     // Directive shared storage
     _ctx_store = _arena->alloc(cfg->_ctx_storage_required);
@@ -107,7 +110,7 @@ Errata Context::invoke_for_remap(Config &rule_cfg, TSRemapRequestInfo *rri) {
     _rxp_ctx = pcre2_general_context_create([](PCRE2_SIZE size
                                                , void *ctx) -> void * { return static_cast<self_type *>(ctx)->_arena->alloc(size).data(); }
                                             , [](void *, void *) -> void {}, this);
-    _rxp_capture = pcre2_match_data_create(rule_cfg._capture_groups, _rxp_ctx);
+    _rxp_active = pcre2_match_data_create(rule_cfg._capture_groups, _rxp_ctx);
     _rxp_working = pcre2_match_data_create(rule_cfg._capture_groups, _rxp_ctx);
   }
   // What about directive storage?
@@ -259,13 +262,28 @@ int Context::ts_callback(TSCont cont, TSEvent evt, void *payload) {
   return TS_SUCCESS;
 }
 
+Context::RxpCapture * Context::rxp_match(unsigned n) {
+  if (_rxp_working._n < n) {
+    _rxp_working._match = pcre2_match_data_create(n, _rxp_ctx);
+    _rxp_working._n = n;
+  }
+  return &_rxp_working;
+}
+
+void Context::set_literal_capture(swoc::TextView text) {
+  auto ovector = pcre2_get_ovector_pointer(_rxp_active._match);
+  ovector[0] = 0;
+  ovector[1] = text.size()-1;
+  _rxp_src = text;
+}
+
 unsigned Context::ArgPack::count() const {
-  return _ctx._rxp_capture ? pcre2_get_ovector_count(_ctx._rxp_capture) : 0;
+  return pcre2_get_ovector_count(_ctx._rxp_active._match);
 }
 
 BufferWriter& Context::ArgPack::print(unsigned idx, BufferWriter &w
                                       , swoc::bwf::Spec const &spec) const {
-  auto ovector = pcre2_get_ovector_pointer(_ctx._rxp_capture);
+  auto ovector = pcre2_get_ovector_pointer(_ctx._rxp_active._match);
   idx *= 2; // To account for offset pairs.
   return bwformat(w, spec, _ctx._rxp_src.substr(ovector[idx], ovector[idx+1] - ovector[idx]));
 }

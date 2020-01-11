@@ -214,6 +214,7 @@ protected:
   bool _has_top_level_directive_p { false };
 
   /// Maximum number of capture groups for regular expression matching.
+  /// Always at least one because literal matches use that.
   unsigned _capture_groups = 1;
 
   /** @defgroup Feature reference tracking.

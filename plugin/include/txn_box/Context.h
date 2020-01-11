@@ -184,26 +184,7 @@ public:
   /// Context for working with PCRE - allocates from the transaction arena.
   pcre2_general_context* _rxp_ctx = nullptr;
 
-  /// Active regex capture data.
-  pcre2_match_data *_rxp_capture = nullptr;
-  /// Active view to which the capture groups refer.
-  FeatureView _rxp_src;
-
-  /// Temporary / working capture group data.
-  pcre2_match_data *_rxp_working = nullptr;
-
-  /// Promote the working capture group data to active capture group data.
-  pcre2_match_data* promote_capture_data() {
-    std::swap(_rxp_capture, _rxp_working);
-    return _rxp_capture;
-  }
-
-  void set_literal_capture(swoc::TextView text) {
-    auto ovector = pcre2_get_ovector_pointer(_rxp_capture);
-    ovector[0] = 0;
-    ovector[1] = text.size()-1;
-    _rxp_src = text;
-  }
+  void set_literal_capture(swoc::TextView text);
 
   self_type & store_txn_var(swoc::TextView const& name, Feature && value) {
     return this->store_txn_var(name, value);
@@ -233,6 +214,27 @@ public:
   TSRemapRequestInfo* _remap_info = nullptr;
   TSRemapStatus _remap_status = TSREMAP_NO_REMAP;
 
+  /// Match data support for PCRE.
+  struct RxpCapture {
+    /// PCRE match data.
+    pcre2_match_data *_match = nullptr;
+    /// Number of capture groups supported by @a data.
+    unsigned _n = 0;
+  };
+
+  /** Working match data for doing PCRE matching.
+   *
+   * @param n Number of capture groups required.
+   * @return Cpature data sufficient to match @a n groups.
+   */
+  RxpCapture * rxp_match(unsigned n);
+
+  /// Commit the working match data as the active match data.
+  RxpCapture * rxp_commit_match() {
+    std::swap(_rxp_active, _rxp_working);
+    return &_rxp_active;
+  }
+
   /** Clear cached data.
    *
    */
@@ -257,6 +259,15 @@ protected:
   swoc::MemSpan<void> _ctx_store;
 
   swoc::Errata invoke_callbacks();
+
+  /// Active regex capture data.
+  RxpCapture _rxp_active;
+
+  /// Temporary / working capture group data.
+  RxpCapture _rxp_working;
+
+  /// Active view to which the capture groups refer.
+  FeatureView _rxp_src;
 
   /// A transaction scope variable.
   struct TxnVar {
