@@ -409,11 +409,11 @@ public:
 };
 
 Feature Ex_with_feature::extract(class Context & ctx, const struct Extractor::Spec & spec) {
-  return ctx._feature;
+  return ctx._active;
 }
 
 BufferWriter& Ex_with_feature::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, ctx._feature);
+  return bwformat(w, spec, ctx._active);
 }
 /* ------------------------------------------------------------------------------------ */
 BufferWriter& Ex_this::format(BufferWriter &w, Extractor::Spec const &spec, Context &ctx) {

@@ -78,19 +78,19 @@ public:
 
   /** Extract a feature.
    *
-   * @param fmt The extraction format.
+   * @param expr The feature expression.
    * @return The feature.
    *
-   * This extracts the feature as described by @a fmt. This feature is transient and will potentially
-   * be overwritten by the next feature extraction. If the feature should be preserved longer than
-   * that, use @c commit.
+   * This extracts the feature as described by @a expr. This feature is transient and will
+   * potentially be overwritten by the next feature extraction. If the feature should be preserved
+   * longer than that, use @c commit.
    *
    * The purpose of this is to permit examining the feature after extraction and before committing
    * it to transaction local memory.
    *
    * @see commit
    */
-  Feature extract(Expr const& fmt);
+  Feature extract(Expr const& expr);
 
   /** Commit a feature.
    *
@@ -111,7 +111,9 @@ public:
   TSCont _cont = nullptr;
   ts::HttpTxn _txn = nullptr;
   /// Current extracted feature data.
-  Feature _feature;
+  Feature _active;
+  /// Should the active feature be updated (e.g., is used later).
+  bool _active_p = false;
 
   void operator()(swoc::BufferWriter& w, Extractor::Spec const& spec);
 

@@ -1392,8 +1392,8 @@ BufferWriter& bwformat(BufferWriter& w, bwf::Spec const& spec, WithTuple::Op op)
 
 Errata With::invoke(Context &ctx) {
   Feature feature { ctx.extract(_ex) };
-  Feature save { ctx._feature };
-  ctx._feature = feature;
+  Feature save { ctx._active };
+  ctx._active = feature;
   if (_do) {
     _do->invoke(ctx);
   }
@@ -1403,7 +1403,7 @@ Errata With::invoke(Context &ctx) {
     }
   }
   // Need to restore to previous state if nothing matched.
-  ctx._feature = save;
+  ctx._active = save;
   return {};
 }
 
