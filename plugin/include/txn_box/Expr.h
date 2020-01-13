@@ -20,31 +20,6 @@ class Expr {
   using self_type = Expr; ///< Self reference type.
   using Spec = Extractor::Spec; ///< Import for convenience.
 public:
-  Expr() = default;
-  Expr(self_type const& that) = delete;
-  Expr(self_type && that) = default;
-  self_type & operator = (self_type const& that) = delete;
-  self_type & operator = (self_type && that) = default;
-
-  /** Construct from a Feature.
-   *
-   * @param f Feature that is the result of the expression.
-   *
-   * The constructed instance will always be the literal @a f.
-   */
-  Expr(Feature const& f) : _expr(f), _result_type(ValueTypeOf(f)) {}
-
-  Expr(Spec const& spec) {
-    if (spec._exf && spec._exf->is_direct()) {
-      _expr.emplace<DIRECT>(spec);
-    } else {
-      auto & comp { _expr.emplace<Expr::COMPOSITE>() };
-      comp._specs.push_back(spec);
-      _result_type = spec._exf->result_type();
-      _max_arg_idx = spec._idx;
-    }
-  }
-
   /// Output generator for BWF on an expression.
   class bwf_ex {
   public:
@@ -113,6 +88,33 @@ public:
 
   /// Post extraction modifiers.
   std::vector<Modifier::Handle> _mods;
+
+  Expr() = default;
+  Expr(self_type const& that) = delete;
+  Expr(self_type && that) = default;
+  self_type & operator = (self_type const& that) = delete;
+  self_type & operator = (self_type && that) = default;
+
+  /** Construct from a Feature.
+   *
+   * @param f Feature that is the result of the expression.
+   *
+   * The constructed instance will always be the literal @a f.
+   */
+  Expr(Feature const& f) : _expr(f), _result_type(ValueTypeOf(f)) {}
+  Expr(Direct && d) : _expr(std::move(d)), _result_type(STRING) {}
+  Expr(Composite && comp) : _expr(std::move(comp)), _result_type(STRING) {}
+
+  Expr(Spec const& spec) {
+    if (spec._exf && spec._exf->is_direct()) {
+      _expr.emplace<DIRECT>(spec);
+    } else {
+      auto & comp { _expr.emplace<Expr::COMPOSITE>() };
+      comp._specs.push_back(spec);
+      _result_type = spec._exf->result_type();
+      _max_arg_idx = spec._idx;
+    }
+  }
 
   bool is_literal() const { return _expr.index() == NIL || _expr.index() == FEATURE; }
 
