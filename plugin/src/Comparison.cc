@@ -287,10 +287,20 @@ bool Cmp_ContainNC::operator()(Context& ctx, TextView const& text, FeatureView &
 
 
 class Cmp_Rxp : public Cmp_String {
+  using self_type = Cmp_Rxp;
+  using super_type = Cmp_String;
+public:
+  Cmp_Rxp(Expr && expr, bool nc_p);
 protected:
-  using Cmp_String::Cmp_String;
   bool operator() (Context & ctx, TextView const& text, FeatureView & active) const override;
 };
+
+Cmp_Rxp::Cmp_Rxp(Expr && expr, bool nc_p) : super_type(std::move(expr)) {
+  Rxp::OptionGroup rxp_opt;
+  rxp_opt[Rxp::OPT_NOCASE] = nc_p;
+
+
+}
 
 bool Cmp_Rxp::operator()(Context & ctx, TextView const& text, FeatureView & active) const {
 
@@ -348,7 +358,7 @@ Rv<Comparison::Handle> Cmp_String::load(Config &cfg, YAML::Node const& cmp_node,
   } else if (CONTAIN_KEY == key) {
 
   } else if (RXP_KEY == key) {
-
+    return Handle(new Cmp_Rxp(std::move(expr), nc_p));
   }
 
   return {};
