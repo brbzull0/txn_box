@@ -379,7 +379,7 @@ protected:
   bool operator()(Context & ctx, TextView const& text, FeatureView & active) const override { return false; }
 
   struct expr_visitor {
-    expr_visitor(Config & cfg, Rxp::Options opt, bool nested_p) : _cfg(cfg), _rxp_opt(opt), _nested_p(p) {}
+    expr_visitor(Config & cfg, Rxp::Options opt) : _cfg(cfg), _rxp_opt(opt) {}
 
     Rv<Handle> operator() (Feature & f);
     Rv<Handle> operator() (Expr::Tuple & t);
@@ -387,14 +387,15 @@ protected:
     Rv<Handle> operator() (Expr::Composite & comp);
     template < typename T > Rv<Handle> operator() (T &) { return Error("Invalid feature type"); }
 
-    bool _nested_p = false;
-    Rxp::Options _rxp_opt;
     Config & _cfg;
+    Rxp::Options _rxp_opt;
   };
 
   struct rxp_visitor {
     bool operator() (Rxp const& rxp);
     bool operator() (Expr const& expr);
+    Context & _ctx;
+    Rxp::Options _rxp_opt;
   };
 };
 
@@ -414,10 +415,48 @@ protected:
 class Cmp_RxpTuple : public Cmp_Rxp {
   using self_type = Cmp_RxpTuple;
   using super_type = Cmp_Rxp;
+  friend super_type;
 public:
   Cmp_RxpTuple(Rxp::Options opt) : _opt(opt) {}
 protected:
-  bool operator()(Context &ctx, FeatureView &active) const override;
+  struct expr_visitor {
+    Errata operator() (Feature & f) {
+      if (IndexFor(STRING) != f.index()) {
+        return Error(R"("{}" literal must be a string.)", KEY);
+      }
+
+      auto && [ rxp, rxp_errata] { Rxp::parse(std::get<IndexFor(STRING)>(f), _rxp_opt) };
+      if (! rxp_errata.is_ok()) {
+        rxp_errata.info(R"(While parsing feature expression for "{}" comparison.)", KEY);
+        return std::move(rxp_errata);
+      }
+      _rxp.emplace_back(std::move(rxp));
+      return {};
+    }
+    Errata operator() (Expr::Tuple & t) {
+      return Error("Invalid type");
+    }
+    Errata operator() (Expr::Direct & d) {
+      _rxp.emplace_back(Expr{std::move(d)});
+      return {};
+    }
+    Errata operator() (Expr::Composite & comp) {
+      _rxp.emplace_back(Expr{std::move(comp)});
+      return {};
+    }
+    Errata operator() (std::monostate) {
+      return Error("Invalid type");
+    }
+
+    std::vector<Item> &_rxp;
+    Rxp::Options _rxp_opt;
+  };
+
+  bool operator()(Context &ctx, FeatureView &active) const override {
+    return std::any_of(_rxp.begin(), _rxp.end(), [&](Item & item) {
+      return std::visit(rxp_visitor{ctx, _opt}, item);
+    });
+  }
 
   Rxp::Options _opt;
   std::vector<Item> _rxp;
@@ -429,20 +468,8 @@ Cmp_RxpSingle::Cmp_RxpSingle(Expr && expr, Rxp::Options opt) : _rxp(std::move(ex
 Cmp_RxpSingle::Cmp_RxpSingle(Rxp && rxp) : _rxp(std::move(rxp)) {
 }
 
-#if 0
-{
-  if (expr.is_literal()) {
-    TextView src = std::get<IndexFor(STRING)>(std::get<Expr::FEATURE>(expr._expr));
-    auto && [ rxp, rxp_errata ] { Rxp::parse(src, rxp_opt) };
-    if (! rxp_errata.is_ok()) {
-      rxp_errata.info(R"(While parsing "rxp" comparison)");
-    }
-  }
-}
-#endif
-
 bool Cmp_RxpSingle::operator()(Context & ctx, FeatureView & active) const {
-  return std::visit(rxp_visitor{}, _rxp);
+  return std::visit(rxp_visitor{ctx, _opt}, _rxp);
 }
 
 Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Feature & f) {
@@ -466,6 +493,15 @@ Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Composite & comp
   return Handle(new Cmp_RxpSingle(Expr{std::move(comp)}, _rxp_opt));
 }
 
+Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Tuple & t) {
+  auto rxm = new Cmp_RxpTuple{_rxp_opt};
+  Cmp_RxpTuple::expr_visitor ev { rxm->_rxp , _rxp_opt};
+  for ( auto && elt : t._exprs) {
+    std::visit(ev, elt._expr);
+  }
+  return Handle { rxm };
+}
+
 Rv<Comparison::Handle> Cmp_Rxp::load(Config &cfg, YAML::Node const& cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
   auto &&[expr, errata]{cfg.parse_expr(value_node)};
 
@@ -480,7 +516,9 @@ Rv<Comparison::Handle> Cmp_Rxp::load(Config &cfg, YAML::Node const& cmp_node, Te
     return std::move(opt_errata);
   }
 
-  return std::visit(rxp_visitor{cfg, options, false}, expr._expr);
+  Rxp::Options rxp_opt;
+  rxp_opt.f.nc = options.f.nc;
+  return std::visit(expr_visitor{cfg, rxp_opt}, expr._expr);
 }
 /* ------------------------------------------------------------------------------------ */
 class Cmp_RegexMatch : public Comparison {
