@@ -5,7 +5,6 @@
 txn_box:
 - when: creq
   do:
-  - var<pristine-host>: creq-host # cache this for after remap.
   # clear cookies when going to yimg.com.
   - with: creq-host
     select:
