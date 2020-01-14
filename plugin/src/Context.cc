@@ -104,15 +104,12 @@ Errata Context::invoke_for_remap(Config &rule_cfg, TSRemapRequestInfo *rri) {
   _cur_hook = Hook::REMAP;
   _remap_info = rri;
   this->clear_cache();
+  // Ugly, but need to make sure the regular expression storage is sufficient for both working
+  // and committed match data.
+  this->rxp_match_require(rule_cfg._capture_groups);
+  this->rxp_commit_match(""); // swap
+  this->rxp_match_require(rule_cfg._capture_groups);
 
-  // Ugly, but need to make sure the regular expression storage is sufficient.
-  if (!_cfg || rule_cfg._capture_groups > _cfg->_capture_groups) {
-    _rxp_ctx = pcre2_general_context_create([](PCRE2_SIZE size
-                                               , void *ctx) -> void * { return static_cast<self_type *>(ctx)->_arena->alloc(size).data(); }
-                                            , [](void *, void *) -> void {}, this);
-    _rxp_active = pcre2_match_data_create(rule_cfg._capture_groups, _rxp_ctx);
-    _rxp_working = pcre2_match_data_create(rule_cfg._capture_groups, _rxp_ctx);
-  }
   // What about directive storage?
 
   // Remap rule directives.
@@ -262,12 +259,15 @@ int Context::ts_callback(TSCont cont, TSEvent evt, void *payload) {
   return TS_SUCCESS;
 }
 
-Context::RxpCapture * Context::rxp_match(unsigned n) {
+Context & Context::rxp_match_require(unsigned n) {
   if (_rxp_working._n < n) {
+    // Bump up at least 7, or 50%, or at least @a n.
+    n = std::max(_rxp_working._n + 7, n);
+    n = std::max(3 * _rxp_working._n / 2 , n);
     _rxp_working._match = pcre2_match_data_create(n, _rxp_ctx);
     _rxp_working._n = n;
   }
-  return &_rxp_working;
+  return *this;
 }
 
 void Context::set_literal_capture(swoc::TextView text) {

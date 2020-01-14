@@ -229,10 +229,13 @@ public:
    * @param n Number of capture groups required.
    * @return Cpature data sufficient to match @a n groups.
    */
-  RxpCapture * rxp_match(unsigned n);
+  self_type & rxp_match_require(unsigned n);
+
+  pcre2_match_data * rxp_working_match_data() { return _rxp_working._match; }
 
   /// Commit the working match data as the active match data.
-  RxpCapture * rxp_commit_match() {
+  RxpCapture * rxp_commit_match(swoc::TextView const& src) {
+    _rxp_src = src;
     std::swap(_rxp_active, _rxp_working);
     return &_rxp_active;
   }

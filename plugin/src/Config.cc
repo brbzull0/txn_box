@@ -270,7 +270,7 @@ Rv<Expr> Config::parse_scalar_expr(YAML::Node node) {
 Rv<Expr> Config::parse_expr_with_mods(YAML::Node node) {
   auto && [ expr, expr_errata ] { this->parse_expr(node[0])};
   if (! expr_errata.is_ok()) {
-    expr_errata.info("While processing the expression at {}.", node);
+    expr_errata.info("While processing the expression at {}.", node.Mark());
     return std::move(expr_errata);
   }
 

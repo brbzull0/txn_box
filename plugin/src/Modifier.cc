@@ -269,7 +269,7 @@ Errata Mod_As_Integer::operator()(Context &ctx, Feature &feature) {
 }
 
 Rv<Modifier::Handle> Mod_As_Integer::load(Config &cfg, YAML::Node mod_node, YAML::Node key_node) {
-  auto && [ fmt, errata ] { cfg.parse_feature(key_node) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_node) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" modifier at {}.)", KEY, key_node.Mark());
     return std::move(errata);

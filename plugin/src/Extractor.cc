@@ -93,7 +93,7 @@ Errata FeatureGroup::load_fmt(Config & cfg, Tracking& info, YAML::Node const &no
     }
     #endif
   }
-  info._fmt_array.emplace_back(std::move(fmt));
+  info._fmt_array.emplace_back(std::move(expr));
   return std::move(errata);
 }
 
@@ -253,7 +253,7 @@ Errata FeatureGroup::load_as_tuple( Config &cfg, YAML::Node const &node
 
     // Not handling MULTI correctly - need to check if element is a list that is not a format
     // with modifiers, and gather the multi-values.
-    auto && [ fmt, errata ] = cfg.parse_feature(node[idx]);
+    auto && [ fmt, errata ] = cfg.parse_expr(node[idx]);
     if (! errata.is_ok()) {
       return std::move(errata);
     }
@@ -295,7 +295,7 @@ Feature FeatureGroup::extract(Context &ctx, index_type idx) {
         precursor._feature = this->extract(ctx, edge_idx);
       }
     }
-    data._feature = ctx.extract(data._fmt);
+    data._feature = ctx.extract(data._expr);
     return data._feature;
   }
   return {};

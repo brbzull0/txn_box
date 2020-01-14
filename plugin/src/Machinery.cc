@@ -73,7 +73,7 @@ public:
    *
    * @param fmt Feature for host.
    */
-  Do_creq_host(Extractor::Expr && fmt);
+  Do_creq_host(Expr && fmt);
 
   /** Invoke directive.
    *
@@ -95,13 +95,13 @@ public:
                           , swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _fmt; ///< Host feature.
+  Expr _fmt; ///< Host feature.
 };
 
 const std::string Do_creq_host::KEY { "creq-host" };
 const HookMask Do_creq_host::HOOKS { MaskFor({Hook::CREQ, Hook::PRE_REMAP, Hook::POST_REMAP}) };
 
-Do_creq_host::Do_creq_host(Extractor::Expr &&fmt) : _fmt(std::move(fmt)) {}
+Do_creq_host::Do_creq_host(Expr &&fmt) : _fmt(std::move(fmt)) {}
 
 Errata Do_creq_host::invoke(Context &ctx) {
   TextView host{std::get<IndexFor(STRING)>(ctx.extract(_fmt))};
@@ -112,7 +112,7 @@ Errata Do_creq_host::invoke(Context &ctx) {
 }
 
 swoc::Rv<Directive::Handle> Do_creq_host::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_value) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" directive at {}.)", KEY, drtv_node.Mark());
     return { {}, std::move(errata)};
@@ -135,7 +135,7 @@ public:
    *
    * @param fmt Feature for host.
    */
-  Do_preq_host(Extractor::Expr && fmt);
+  Do_preq_host(Expr && fmt);
 
   /** Invoke directive.
    *
@@ -157,13 +157,13 @@ public:
                         , swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _fmt; ///< Host feature.
+  Expr _fmt; ///< Host feature.
 };
 
 const std::string Do_preq_host::KEY { "preq-host" };
 const HookMask Do_preq_host::HOOKS { MaskFor({Hook::PREQ, Hook::PRE_REMAP, Hook::POST_REMAP}) };
 
-Do_preq_host::Do_preq_host(Extractor::Expr &&fmt) : _fmt(std::move(fmt)) {}
+Do_preq_host::Do_preq_host(Expr &&fmt) : _fmt(std::move(fmt)) {}
 
 Errata Do_preq_host::invoke(Context &ctx) {
   TextView host{std::get<IndexFor(STRING)>(ctx.extract(_fmt))};
@@ -174,7 +174,7 @@ Errata Do_preq_host::invoke(Context &ctx) {
 }
 
 swoc::Rv<Directive::Handle> Do_preq_host::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_value) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" directive at {}.)", KEY, drtv_node.Mark());
     return { {}, std::move(errata)};
@@ -197,7 +197,7 @@ public:
    *
    * @param fmt Feature for host.
    */
-  Do_remap_host(Extractor::Expr && fmt);
+  Do_remap_host(Expr && fmt);
 
   /** Invoke directive.
    *
@@ -219,13 +219,13 @@ public:
                           , swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _fmt; ///< Host feature.
+  Expr _fmt; ///< Host feature.
 };
 
 const std::string Do_remap_host::KEY { "remap-host" };
 const HookMask Do_remap_host::HOOKS { MaskFor(Hook::REMAP) };
 
-Do_remap_host::Do_remap_host(Extractor::Expr &&fmt) : _fmt(std::move(fmt)) {}
+Do_remap_host::Do_remap_host(Expr &&fmt) : _fmt(std::move(fmt)) {}
 
 Errata Do_remap_host::invoke(Context &ctx) {
   TextView host{std::get<IndexFor(STRING)>(ctx.extract(_fmt))};
@@ -234,7 +234,7 @@ Errata Do_remap_host::invoke(Context &ctx) {
 }
 
 swoc::Rv<Directive::Handle> Do_remap_host::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_value) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" directive at {}.)", KEY, drtv_node.Mark());
     return { {}, std::move(errata)};
@@ -325,16 +325,16 @@ class FieldDirective : public Directive {
   using super_type = Directive; ///< Parent type.
 protected:
   TextView _name; ///< Field name.
-  Extractor::Expr _value_fmt; ///< Feature for value.
+  Expr _value_fmt; ///< Feature for value.
 
-  FieldDirective(TextView const& name, Extractor::Expr && fmt);
+  FieldDirective(TextView const& name, Expr && fmt);
 
   Errata invoke(Context& ctx, ts::HttpHeader && hdr);
 
-  static Rv<Handle> load(Config& cfg, std::function<Handle (TextView const& name, Extractor::Expr && fmt)> const& maker, TextView const& key, TextView const& name, YAML::Node const& key_value);
+  static Rv<Handle> load(Config& cfg, std::function<Handle (TextView const& name, Expr && fmt)> const& maker, TextView const& key, TextView const& name, YAML::Node const& key_value);
 };
 
-FieldDirective::FieldDirective(TextView const &name, Extractor::Expr &&fmt) : _name(name), _value_fmt(std::move(fmt)) {}
+FieldDirective::FieldDirective(TextView const &name, Expr &&fmt) : _name(name), _value_fmt(std::move(fmt)) {}
 
 Errata FieldDirective::invoke(Context & ctx, ts::HttpHeader && hdr) {
   if (hdr.is_valid()) {
@@ -352,10 +352,10 @@ Errata FieldDirective::invoke(Context & ctx, ts::HttpHeader && hdr) {
 }
 
 auto FieldDirective::load(Config &cfg, std::function<Handle(TextView const &
-                         , Extractor::Expr &&)> const &maker
+                         , Expr &&)> const &maker
                          , TextView const &key, TextView const &arg
                          , YAML::Node const &key_value) -> Rv<Handle> {
-  auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_value) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing value for "{}".)", key);
     return { {}, std::move(errata)};
@@ -396,7 +396,7 @@ Errata Do_creq_field::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_creq_field::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 // --
@@ -422,7 +422,7 @@ Errata Do_preq_field::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_preq_field::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 // --
@@ -448,7 +448,7 @@ Errata Do_prsp_field::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_prsp_field::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 /// Set a field in the client request if not already set.
@@ -476,7 +476,7 @@ Errata Do_creq_field_default::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_creq_field_default::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 
 /// Set a field in the client request if not already set.
@@ -504,7 +504,7 @@ Errata Do_preq_field_default::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_preq_field_default::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  return super_type::load(cfg, [](TextView const& name, Extractor::Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
+  return super_type::load(cfg, [](TextView const& name, Expr && fmt) -> Handle { return Handle(new self_type(name, std::move(fmt))); }, KEY, arg, key_value);
 }
 /* ------------------------------------------------------------------------------------ */
 /// Remove a field from the client request.
@@ -617,7 +617,7 @@ public:
 
 protected:
   TSHttpStatus _status = TS_HTTP_STATUS_NONE; ///< Return status is literal, 0 => extract at runtime.
-  Extractor::Expr _status_fmt; ///< Return status.
+  Expr _status_fmt; ///< Return status.
 
   Do_set_ursp_status() = default;
 };
@@ -653,7 +653,7 @@ Errata Do_set_ursp_status::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_set_ursp_status::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto &&[fmt, errata]{cfg.parse_feature(key_value)};
+  auto &&[fmt, errata]{cfg.parse_expr(key_value)};
   if (! errata.is_ok()) {
     return { {}, std::move(errata) };
   }
@@ -696,7 +696,7 @@ public:
 
 protected:
   TSHttpStatus _status = TS_HTTP_STATUS_NONE; ///< Return status is literal, 0 => extract at runtime.
-  Extractor::Expr _fmt; ///< Reason phrase.
+  Expr _fmt; ///< Reason phrase.
 
   Do_set_ursp_reason() = default;
 };
@@ -711,7 +711,7 @@ Errata Do_set_ursp_reason::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_set_ursp_reason::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto &&[fmt, errata]{cfg.parse_feature(key_value)};
+  auto &&[fmt, errata]{cfg.parse_expr(key_value)};
   if (! errata.is_ok()) {
     return { {}, std::move(errata) };
   }
@@ -745,7 +745,7 @@ public:
 
 protected:
   TSHttpStatus _status = TS_HTTP_STATUS_NONE; ///< Return status is literal, 0 => extract at runtime.
-  Extractor::Expr _fmt; ///< Reason phrase.
+  Expr _fmt; ///< Reason phrase.
 
   Do_set_prsp_body() = default;
 };
@@ -760,7 +760,7 @@ Errata Do_set_prsp_body::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_set_prsp_body::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto &&[fmt, errata]{cfg.parse_feature(key_value)};
+  auto &&[fmt, errata]{cfg.parse_expr(key_value)};
   if (! errata.is_ok()) {
     return { {}, std::move(errata) };
   }
@@ -909,18 +909,20 @@ Errata Do_redirect::load_status() {
   FeatureGroup::ExfInfo & info = _fg[_status_idx];
   FeatureGroup::ExfInfo::Single & ex = std::get<FeatureGroup::ExfInfo::SINGLE>(info._ex);
 
-  if (ex._fmt.is_literal()) {
-    TextView src{ex._fmt.literal()}, parsed;
+  #if 0
+  if (ex._expr.is_literal()) {
+    TextView src{ex._expr.literal()}, parsed;
     auto status = swoc::svtou(src, &parsed);
     if (parsed.size() != src.size() || status < 100 || status > 599) {
       return Errata().error(R"({} "{}" at {} is not a positive integer 100..599 as required.)", STATUS_KEY, src);
     }
     _status = status;
   } else {
-    if (ex._fmt._result_type != STRING && ex._fmt._result_type != INTEGER) {
+    if (ex._expr._result_type != STRING && ex._expr._result_type != INTEGER) {
       return Errata().error(R"({} is not an integer nor string as required.)", STATUS_KEY);
     }
   }
+  #endif
   return {};
 }
 
@@ -967,16 +969,16 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _tag_fmt;
-  Extractor::Expr _msg_fmt;
+  Expr _tag_fmt;
+  Expr _msg_fmt;
 
-  Do_debug_msg(Extractor::Expr && tag, Extractor::Expr && msg);
+  Do_debug_msg(Expr && tag, Expr && msg);
 };
 
 const std::string Do_debug_msg::KEY { "debug" };
 const HookMask Do_debug_msg::HOOKS { MaskFor({Hook::CREQ, Hook::PREQ, Hook::URSP, Hook::PRSP, Hook::PRE_REMAP, Hook::POST_REMAP, Hook::REMAP }) };
 
-Do_debug_msg::Do_debug_msg(Extractor::Expr &&tag, Extractor::Expr &&msg) : _tag_fmt(std::move(tag)), _msg_fmt(std::move(msg)) {}
+Do_debug_msg::Do_debug_msg(Expr &&tag, Expr &&msg) : _tag_fmt(std::move(tag)), _msg_fmt(std::move(msg)) {}
 
 Errata Do_debug_msg::invoke(Context &ctx) {
   TextView tag = std::get<IndexFor(STRING)>(ctx.extract(_tag_fmt));
@@ -987,24 +989,24 @@ Errata Do_debug_msg::invoke(Context &ctx) {
 
 Rv<Directive::Handle> Do_debug_msg::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
   if (key_value.IsScalar()) {
-    auto && [ msg_fmt, msg_errata ] = cfg.parse_feature(key_value);
+    auto && [ msg_fmt, msg_errata ] = cfg.parse_expr(key_value);
     if (! msg_errata.is_ok()) {
       msg_errata.info(R"(While parsing message at {} for "{}" directive at {}.)", key_value.Mark(), KEY, drtv_node.Mark());
       return { {}, std::move(msg_errata)};
     }
-    return { Handle{new self_type{Extractor::literal(Config::PLUGIN_TAG), std::move(msg_fmt)}}, {} };
+    return { Handle{new self_type{Expr{Config::PLUGIN_TAG}, std::move(msg_fmt)}}, {} };
   } else if (key_value.IsSequence()) {
     if (key_value.size() > 2) {
       return Error(R"(Value for "{}" key at {} is not a list of two strings as required.)", KEY, key_value.Mark());
     } else if (key_value.size() < 1) {
       return Error(R"(The list value for "{}" key at {} does not have at least one string as required.)", KEY, key_value.Mark());
     }
-    auto && [ tag_fmt, tag_errata ] = cfg.parse_feature(key_value[0], Config::StrType::C);
+    auto && [ tag_fmt, tag_errata ] = cfg.parse_expr(key_value[0]);
     if (!tag_errata.is_ok()) {
       tag_errata.info(R"(While parsing tag at {} for "{}" directive at {}.)", key_value[0].Mark(), KEY, drtv_node.Mark());
       return { {}, std::move(tag_errata) };
     }
-    auto && [ msg_fmt, msg_errata ] = cfg.parse_feature(key_value[1]);
+    auto && [ msg_fmt, msg_errata ] = cfg.parse_expr(key_value[1]);
     if (!tag_errata.is_ok()) {
       tag_errata.info(R"(While parsing message at {} for "{}" directive at {}.)", key_value[1].Mark(), KEY, drtv_node.Mark());
       return { {}, std::move(tag_errata) };
@@ -1017,10 +1019,10 @@ Rv<Directive::Handle> Do_debug_msg::load(Config& cfg, YAML::Node const& drtv_nod
 /* ------------------------------------------------------------------------------------ */
 class QueryDirective {
 public:
-  Errata invoke(Context &ctx, Extractor::Expr& fmt, ts::URL url, TextView key);
+  Errata invoke(Context &ctx, Expr& fmt, ts::URL url, TextView key);
 };
 
-Errata QueryDirective::invoke(Context &ctx, Extractor::Expr& fmt, ts::URL url, TextView key) {
+Errata QueryDirective::invoke(Context &ctx, Expr& fmt, ts::URL url, TextView key) {
   auto feature = ctx.extract(fmt);
   if (key.empty()) {
     url.query_set(std::get<IndexFor(STRING)>(feature));
@@ -1083,9 +1085,9 @@ public:
 
 protected:
   TextView _arg;
-  Extractor::Expr _fmt;
+  Expr _fmt;
 
-  Do_set_creq_query(TextView arg, Extractor::Expr && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
+  Do_set_creq_query(TextView arg, Expr && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
 };
 
 const std::string Do_set_creq_query::KEY { "set-creq-query" };
@@ -1099,7 +1101,7 @@ Rv<Directive::Handle> Do_set_creq_query::load(Config &cfg, YAML::Node const &drt
                                              , swoc::TextView const &name, swoc::TextView arg
                                              , YAML::Node const &key_value) {
 
-  auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_value) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" directive at {}.)", KEY, drtv_node.Mark());
     return { {}, std::move(errata)};
@@ -1124,9 +1126,9 @@ public:
 
 protected:
   TextView _arg;
-  Extractor::Expr _fmt;
+  Expr _fmt;
 
-  Do_remap_query(TextView arg, Extractor::Expr && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
+  Do_remap_query(TextView arg, Expr && fmt) : _arg(arg), _fmt(std::move(fmt)) {}
 };
 
 const std::string Do_remap_query::KEY { "remap-query" };
@@ -1136,7 +1138,7 @@ Rv<Directive::Handle> Do_remap_query::load(Config &cfg, YAML::Node const &drtv_n
                                               , swoc::TextView const &name, swoc::TextView arg
                                               , YAML::Node const &key_value) {
 
-  auto && [ fmt, errata ] { cfg.parse_feature(key_value) };
+  auto && [ fmt, errata ] { cfg.parse_expr(key_value) };
   if (! errata.is_ok()) {
     errata.info(R"(While parsing "{}" directive at {}.)", KEY, drtv_node.Mark());
     return { {}, std::move(errata)};
@@ -1174,9 +1176,9 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _fmt; ///< Cache key.
+  Expr _fmt; ///< Cache key.
 
-  Do_cache_key(Extractor::Expr && fmt) : _fmt(std::move(fmt)) {}
+  Do_cache_key(Expr && fmt) : _fmt(std::move(fmt)) {}
 };
 
 const std::string Do_cache_key::KEY { "cache-key" };
@@ -1189,7 +1191,7 @@ Errata Do_cache_key::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_cache_key::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto &&[fmt, errata]{cfg.parse_feature(key_value)};
+  auto &&[fmt, errata]{cfg.parse_expr(key_value)};
   if (! errata.is_ok()) {
     return std::move(errata);
   }
@@ -1217,10 +1219,10 @@ public:
   static Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _fmt; ///< Cache key.
+  Expr _fmt; ///< Cache key.
   ts::TxnConfigVar *_var = nullptr;
 
-  Do_txn_conf(Extractor::Expr && fmt, ts::TxnConfigVar * var) : _fmt(std::move(fmt)), _var(var) {}
+  Do_txn_conf(Expr && fmt, ts::TxnConfigVar * var) : _fmt(std::move(fmt)), _var(var) {}
 };
 
 const std::string Do_txn_conf::KEY { "txn-conf" };
@@ -1246,7 +1248,7 @@ Rv<Directive::Handle> Do_txn_conf::load(Config& cfg, YAML::Node const& drtv_node
   if (txn_var->type() != TS_RECORDDATATYPE_INT && txn_var->type() != TS_RECORDDATATYPE_STRING) {
     return Error(R"("{}" is of type "{}" which is not currently supported.)", arg, ts::TSRecordDataTypeNames[txn_var->type()]);
   }
-  auto &&[fmt, errata]{cfg.parse_feature(key_value)};
+  auto &&[fmt, errata]{cfg.parse_expr(key_value)};
   if (! errata.is_ok()) {
     return std::move(errata);
   }
@@ -1275,9 +1277,9 @@ public:
 
 protected:
   TextView _name; ///< Variable name.
-  Extractor::Expr _value; ///< Value for variable.
+  Expr _value; ///< Value for variable.
 
-  Do_var(TextView const& arg, Extractor::Expr && value) : _name(arg), _value(std::move(value)) {}
+  Do_var(TextView const& arg, Expr && value) : _name(arg), _value(std::move(value)) {}
 };
 
 const std::string Do_var::KEY { "var" };
@@ -1289,7 +1291,7 @@ Errata Do_var::invoke(Context &ctx) {
 }
 
 Rv<Directive::Handle> Do_var::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
-  auto &&[fmt, errata]{cfg.parse_feature(key_value)};
+  auto &&[fmt, errata]{cfg.parse_expr(key_value)};
   if (! errata.is_ok()) {
     return std::move(errata);
   }
@@ -1313,7 +1315,7 @@ public:
   static swoc::Rv<Handle> load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value);
 
 protected:
-  Extractor::Expr _ex; ///< Extractor format.
+  Expr _ex; ///< Extractor format.
   Directive::Handle _do; ///< Pre-selection directives.
 
   /// A single case in the select.
@@ -1357,7 +1359,7 @@ public:
   Errata invoke(Context &ctx) override;
 
 protected:
-  std::vector<Extractor::Expr> _ex; /// Extractor tuple.
+  std::vector<Expr> _ex; /// Extractor tuple.
 
   /// A single case in the select.
   struct Case {
@@ -1421,7 +1423,7 @@ swoc::Rv<Directive::Handle> With::load(Config& cfg, YAML::Node const& drtv_node,
 
   if (key_value.IsScalar()) {
     // Need to parse this first, so the feature type can be determined.
-    auto && [ fmt, errata ] = cfg.parse_feature(key_value);
+    auto && [ fmt, errata ] = cfg.parse_expr(key_value);
 
     if (!errata.is_ok()) {
       return std::move(errata);
@@ -1501,12 +1503,12 @@ Errata With::load_case(Config & cfg, YAML::Node node) {
 // This is only called from @c With::load which calls this iff the @c with key value is a sequence.
 swoc::Rv<Directive::Handle> WithTuple::load(Config& cfg, YAML::Node const& drtv_node, swoc::TextView const& name, swoc::TextView const& arg, YAML::Node const& key_value) {
   YAML::Node select_node { drtv_node[SELECT_KEY] };
-  std::vector<Extractor::Expr> ex_tuple;
+  std::vector<Expr> ex_tuple;
 
   // Get the feature extraction tuple.
   for ( auto const& child : key_value ) {
     if (child.IsScalar()) {
-      auto &&[fmt, errata]{cfg.parse_feature(child)};
+      auto &&[fmt, errata]{cfg.parse_expr(child)};
       if (errata.is_ok()) {
         ex_tuple.emplace_back(std::move(fmt));
       } else {
