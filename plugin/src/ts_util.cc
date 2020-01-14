@@ -286,6 +286,18 @@ TextView ts::HttpSsn::inbound_sni() const {
   return {};
 }
 
+TextView ts::HttpSsn::proto_contains(const swoc::TextView &tag) const {
+  TextView probe { tag };
+  if (tag.empty() || tag.back() != '\0') {
+    char* span = static_cast<char*>(alloca(tag.size() + 1));
+    memcpy(span, tag.data(), tag.size());
+    span[tag.size()] = '\0';
+    probe.assign(span, tag.size() + 1);
+  }
+  auto result = TSHttpSsnClientProtocolStackContains(_ssn, probe.data());
+  return { result, strlen(result) };
+}
+
 Errata ts::HttpTxn::cache_key_assign(TextView const &key) {
   TSCacheUrlSet(_txn, key.data(), key.size());
   return {};

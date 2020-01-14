@@ -332,6 +332,37 @@ BufferWriter& Ex_cssn_sni::format(BufferWriter &w, Spec const &spec, Context &ct
   return bwformat(w, spec, this->direct_view(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
+/// Client Session protocol information.
+class Ex_cssn_proto : public StringExtractor {
+  using self_type = Ex_cssn_proto; ///< Self reference type.
+  using super_type = StringExtractor; ///< Parent type.
+public:
+  static constexpr TextView NAME { "cssn-proto" };
+
+  Errata validate(Config & cfg, Spec & spec, TextView const& arg) override;
+
+  BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
+};
+
+Errata Ex_cssn_proto::validate(Config &cfg, Spec &spec, const TextView &arg) {
+  if (arg.empty()) {
+    return Error(R"("{}" extractor requires an argument to use as a protocol prefix.)", NAME);
+  }
+  auto text = cfg.span<char>(arg.size() + 1);
+  auto view = cfg.span<TextView>(1);
+  memcpy(text, arg);
+  text[arg.size()] = 0; // API call, need C string.
+  view[0].assign(text.data(), arg.size() + 1);
+  spec._data = view.rebind<void>();
+  return {};
+}
+
+BufferWriter& Ex_cssn_proto::format(BufferWriter &w, Spec const &spec, Context &ctx) {
+  auto view = spec._data.rebind<TextView>()[0];
+  auto tag = ctx._txn.ssn().proto_contains(view);
+  return bwformat(w, spec, tag);
+}
+/* ------------------------------------------------------------------------------------ */
 class Ex_random : public IntegerExtractor {
   using self_type = Ex_random; ///< Self reference type.
   using super_type = IntegerExtractor; ///< Parent type.
@@ -446,6 +477,7 @@ Ex_ursp_status ursp_status;
 Ex_is_internal is_internal;
 
 Ex_cssn_sni cssn_sni;
+Ex_cssn_proto cssn_proto;
 
 Ex_random random;
 
@@ -464,10 +496,11 @@ Ex_with_feature ex_with_feature;
   Extractor::define(Ex_creq_field::NAME, &creq_field);
   Extractor::define(Ex_ursp_status::NAME, &ursp_status);
   Extractor::define(Ex_is_internal::NAME, &is_internal);
-  Extractor::define(Ex_cssn_sni::NAME, &cssn_sni);
   Extractor::define(Ex_random::NAME, &random);
   Extractor::define(Ex_var::NAME, &var);
 
+  Extractor::define(Ex_cssn_sni::NAME, &cssn_sni);
+  Extractor::define(Ex_cssn_proto::NAME, &cssn_proto);
   return true;
 } ();
 } // namespace

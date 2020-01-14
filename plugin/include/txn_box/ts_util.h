@@ -280,6 +280,8 @@ public:
 
   /// Return the inbound SNI name, if any.
   swoc::TextView inbound_sni() const;
+
+  swoc::TextView proto_contains(swoc::TextView const& tag) const;
 protected:
   TSHttpSsn _ssn = nullptr; ///< Session handle.
 

@@ -9,9 +9,7 @@ txn_box:
   # clear cookies when going to yimg.com.
   - with: creq-host
     select:
-    - any-of:
-      - match<nc>: "yimg.com"
-      - suffix<nc>: ".yimg.com"
+    - tld: "yimg.com"
       do:
         creq-field<Cookie>: NULL
 
@@ -22,16 +20,16 @@ txn_box:
   # if Set-Cookie has a Domain with yimg.com, clear the field.
   - with: ursp-field<Set-Cookie>
     select:
-    - contains<rx,nc>: "Domain=(?:[^=]*[.])?yimg[.]com"
+    - rxp<nc>: "Domain=(?:[^=]*[.])?yimg[.]com"
       do:
         ursp-field<Set-Cookie>: NULL
 
 # For proxy response, fix up the cross site fields if it's TLS.
 - when: prsp
   do:
-  - with: "{cssn-proto-stack}" # force string format.
+  - with: cssn-proto<tls> # any TLS version in the protocol stack?
     select:
-    - contains: "tls"
+    - prefix: "tls" # yes -> TLS session.
       do:
       - prsp-field<Expect-CT>: "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
       - prsp-field<X-XSS-Protection>: "1; mode=block"
