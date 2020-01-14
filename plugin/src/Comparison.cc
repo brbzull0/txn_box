@@ -105,6 +105,7 @@ public:
   static constexpr TextView CONTAIN_KEY { "contain" };
   static constexpr TextView PREFIX_KEY { "prefix" };
   static constexpr TextView SUFFIX_KEY { "suffix" };
+  static constexpr TextView TLD_KEY { "tld" };
 
   /// Mark for @c STRING support only.
   static const ValueMask TYPES;
@@ -317,6 +318,35 @@ bool Cmp_ContainNC::operator()(Context& ctx, TextView const& text, FeatureView &
   return false;
 }
 
+class Cmp_TLD : public Cmp_LiteralString {
+protected:
+  using Cmp_LiteralString::Cmp_LiteralString;
+  bool operator() (Context & ctx, TextView const& text, FeatureView & active) const override;
+};
+
+bool Cmp_TLD::operator()(Context& ctx, TextView const& text, FeatureView & active) const {
+  if (active.ends_with(text) && (text.size() == active.size() || active[active.size() - text.size() - 1] == '.')) {
+    ctx.set_literal_capture(active.suffix(text.size()+1));
+    active.remove_suffix(text.size()+1);
+    return true;
+  }
+  return false;
+}
+
+class Cmp_TLDNC : public Cmp_LiteralString {
+protected:
+  using Cmp_LiteralString::Cmp_LiteralString;
+  bool operator() (Context & ctx, TextView const& text, FeatureView & active) const override;
+};
+
+bool Cmp_TLDNC::operator()(Context& ctx, TextView const& text, FeatureView & active) const {
+  if (active.ends_with_nocase(text) && (text.size() == active.size() || active[active.size() - text.size() - 1] == '.')) {
+    ctx.set_literal_capture(active.suffix(text.size()+1));
+    active.remove_suffix(text.size()+1);
+    return true;
+  }
+  return false;
+}
 // ---
 
 Rv<Comparison::Handle> Cmp_LiteralString::load(Config &cfg, YAML::Node const& cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
@@ -707,6 +737,8 @@ namespace {
   Comparison::define(Cmp_LiteralString::PREFIX_KEY, Cmp_LiteralString::TYPES, Cmp_LiteralString::load);
   Comparison::define(Cmp_LiteralString::SUFFIX_KEY, Cmp_LiteralString::TYPES, Cmp_LiteralString::load);
   Comparison::define(Cmp_LiteralString::CONTAIN_KEY, Cmp_LiteralString::TYPES, Cmp_LiteralString::load);
+  Comparison::define(Cmp_LiteralString::TLD_KEY, Cmp_LiteralString::TYPES, Cmp_LiteralString::load);
+
   Comparison::define(Cmp_Rxp::KEY, Cmp_Rxp::TYPES, Cmp_Rxp::load);
 
   Comparison::define(Cmp_eq::KEY, Cmp_eq::TYPES, Cmp_eq::load);
