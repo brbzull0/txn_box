@@ -1316,7 +1316,6 @@ public:
 
 protected:
   Expr _ex; ///< Extractor format.
-  Directive::Handle _do; ///< Pre-selection directives.
 
   /// A single case in the select.
   struct Case {
