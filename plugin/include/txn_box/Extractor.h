@@ -212,3 +212,7 @@ public:
 };
 
 inline auto BooleanExtractor::result_type() const -> ValueType { return BOOLEAN; }
+
+class IterExtractor : public Extractor {
+
+};

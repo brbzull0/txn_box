@@ -461,12 +461,12 @@ protected:
   Item _rxp;
 };
 
-class Cmp_RxpTuple : public Cmp_Rxp {
-  using self_type = Cmp_RxpTuple;
+class Cmp_RxpList : public Cmp_Rxp {
+  using self_type = Cmp_RxpList;
   using super_type = Cmp_Rxp;
   friend super_type;
 public:
-  Cmp_RxpTuple(Rxp::Options opt) : _opt(opt) {}
+  Cmp_RxpList(Rxp::Options opt) : _opt(opt) {}
 protected:
   struct expr_visitor {
     Errata operator() (Feature & f) {
@@ -545,8 +545,8 @@ Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Composite & comp
 }
 
 Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Tuple & t) {
-  auto rxm = new Cmp_RxpTuple{_rxp_opt};
-  Cmp_RxpTuple::expr_visitor ev { rxm->_rxp , _rxp_opt};
+  auto rxm = new Cmp_RxpList{_rxp_opt};
+  Cmp_RxpList::expr_visitor ev {rxm->_rxp, _rxp_opt};
   for ( auto && elt : t._exprs) {
     std::visit(ev, elt._expr);
   }
