@@ -71,6 +71,16 @@ struct Feature;
 /// Tuples have a fixed size.
 using FeatureTuple = swoc::MemSpan<Feature>;
 
+/** Generic data.
+ * This is used for two purposes -
+ * - Very specialized types that are not general enough to warrant a top level feature type.
+ * - Extension types such that non-framework code can have its own feature (sub) type.
+ */
+class Generic {
+  swoc::TextView _tag; ///< Sub type identifier.
+  std::any _data; ///< Generic data.
+};
+
 /// Enumeration of types of values, e.g. those returned by a feature string or extractor.
 /// This includes all of the types of features, plus some "meta" types to describe situations
 /// in which the type may not be known at configuration load time.
@@ -82,6 +92,7 @@ enum ValueType : int8_t {
   BOOLEAN, ///< Boolean.
   CONS, ///< Pointer to cons cell.
   TUPLE, ///< Array of features (@c FeatureTuple)
+  GENERIC, ///< Externded type.
   NO_VALUE, ///< No value, non-existent feature.
   VARIABLE, ///< Variable / indeterminate type.
   ACTIVE, ///< The active / current feature type.
@@ -94,7 +105,7 @@ template <> struct tuple_size<ValueType> : public std::integral_constant<size_t,
 // *** @c FeatureTypeList and @c FeatureType must be kept in parallel synchronization! ***
 /// Type list of feature types.
 /// The initial values in @c ValueType must match this list exactly.
-using FeatureTypeList = swoc::meta::type_list<std::monostate, FeatureView, intmax_t, swoc::IPAddr, bool, Cons *, FeatureTuple>;
+using FeatureTypeList = swoc::meta::type_list<std::monostate, FeatureView, intmax_t, swoc::IPAddr, bool, Cons *, FeatureTuple, Generic>;
 
 /** Basic feature data type.
  * This is split out in order to make self-reference work. This is the actual variant, and
@@ -112,7 +123,7 @@ using FeatureVariant = FeatureTypeList::template apply<std::variant>;
  * @return Index in @c FeatureData for that feature type.
  */
 inline constexpr unsigned IndexFor(ValueType type) {
-  constexpr std::array<unsigned, FeatureTypeList::size> IDX {0, 1, 2, 3, 4, 5, 6 };
+  constexpr std::array<unsigned, FeatureTypeList::size> IDX {0, 1, 2, 3, 4, 5, 6, 7 };
   return IDX[static_cast<unsigned>(type)];
 };
 
@@ -141,7 +152,7 @@ template < typename VISITOR > auto visit(VISITOR&& visitor, Feature const& featu
 /// @endcond
 
 inline ValueType ValueTypeOf(Feature const& f) {
-  constexpr std::array<ValueType, FeatureTypeList::size> T { NIL, STRING, INTEGER, IP_ADDR, BOOLEAN, CONS, TUPLE };
+  constexpr std::array<ValueType, FeatureTypeList::size> T { NIL, STRING, INTEGER, IP_ADDR, BOOLEAN, CONS, TUPLE, GENERIC };
   return T[f.index()];
 }
 /// Nil value feature.
