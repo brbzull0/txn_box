@@ -36,6 +36,38 @@ swoc::Lexicon<ValueType> ValueTypeNames {{
 }};
 
 /* ------------------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------------------ */
+Feature car(Feature const& feature) {
+  switch (feature.index()) {
+    case IndexFor(CONS):
+      return std::get<IndexFor(CONS)>(feature)->_car;
+    case IndexFor(TUPLE):
+      return std::get<IndexFor(TUPLE)>(feature)[0];
+    case IndexFor(GENERIC):{
+      auto gf = std::get<IndexFor(GENERIC)>(feature);
+      if (gf && gf->description() == TupleIterator::TAG) {
+        return static_cast<TupleIterator*>(gf)->feature();
+      }
+    }
+
+  }
+  return feature;
+}
+
+Feature cdr(Feature const& feature) {
+  switch (feature.index()) {
+    case IndexFor(CONS):
+      return std::get<feature_type_for<CONS>>(feature)->_cdr;
+    case IndexFor(TUPLE): {
+      Feature cdr { feature };
+      auto &span = std::get<feature_type_for<TUPLE>>(cdr);
+      span.remove_prefix(1);
+      return span.empty() ? NIL_FEATURE : cdr;
+    }
+  }
+  return NIL_FEATURE; // No cdr unless explicitly supported.
+}
+/* ------------------------------------------------------------------------------------ */
 namespace swoc {
 BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec, ValueType type) {
   if (spec.has_numeric_type()) {
@@ -274,7 +306,67 @@ FeatureView Ex_creq_field::direct_view(Context &ctx, Spec const& spec) const {
 BufferWriter& Ex_creq_field::format(BufferWriter &w, Spec const &spec, Context &ctx) {
   return bwformat(w, spec, this->direct_view(ctx, spec));
 }
+/* ------------------------------------------------------------------------------------ */
+class Ex_prsp_field : public DirectFeature {
+public:
+  static constexpr TextView NAME { "prsp-field" };
 
+  swoc::Errata validate(Config & cfg, Spec & spec, TextView const& arg) override {
+    auto span = cfg.span<Data>(1);
+    spec._data = span;
+    auto & data = span[0];
+    data._arg = arg;
+    if (0 == strcasecmp(spec._ext, "by-field"_tv)) {
+      data.opt.f.by_field = true;
+    } else if (0 == strcasecmp(spec._ext, "by-value"_tv)) {
+      data.opt.f.by_value = true;
+    }
+    return {};
+  }
+
+  BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
+  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec) override;
+
+protected:
+  struct Data {
+    TextView _arg;
+    union {
+      uint32_t all = 0;
+      struct {
+        unsigned by_value : 1;
+        unsigned by_field : 1;
+      } f;
+    } opt;
+  };
+};
+
+Feature Ex_prsp_field::extract(Context &ctx, const Spec &spec) {
+  Data & data = spec._data.rebind<Data>()[0];
+  if (data.opt.f.by_field) {
+    auto iter = ctx._arena->make<HttpFieldTuple>(NAME, ctx.prsp_hdr(), data._arg);
+    return iter;
+  } else if (data.opt.f.by_value) {
+    return NIL_FEATURE;
+  }
+  return this->direct_view(ctx, spec);
+}
+
+FeatureView Ex_prsp_field::direct_view(Context &ctx, Spec const& spec) const {
+  FeatureView zret;
+  zret._direct_p = true;
+  zret = TextView{};
+  if ( ts::HttpHeader hdr { ctx.prsp_hdr() } ; hdr.is_valid()) {
+    if ( auto field { hdr.field(spec._data.view()) } ; field.is_valid()) {
+      zret = field.value();
+    }
+  }
+  return zret;
+};
+
+BufferWriter& Ex_prsp_field::format(BufferWriter &w, Spec const &spec, Context &ctx) {
+  return bwformat(w, spec, this->direct_view(ctx, spec));
+}
 /* ------------------------------------------------------------------------------------ */
 class Ex_ursp_status : public IntegerExtractor {
 public:

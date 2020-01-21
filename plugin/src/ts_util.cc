@@ -115,7 +115,7 @@ ts::HttpField::~HttpField() {
   TSHandleMLocRelease(_buff, _hdr, _loc);
 }
 
-TextView ts::HttpField::value() {
+TextView ts::HttpField::value() const {
   int size;
   char const *text;
   if (this->is_valid() &&

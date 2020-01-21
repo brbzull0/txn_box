@@ -166,7 +166,7 @@ public:
   ~HttpField();
 
   /// Return the current value for the field.
-  swoc::TextView value();
+  swoc::TextView value() const;
 
   /** Set the @a value for @a this field.
    *
@@ -175,7 +175,14 @@ public:
    */
   bool assign(swoc::TextView value);
 
+  /// Destroy the field (remove from the HTTP header).
   bool destroy();
+
+  self_type next_dup() {
+    return this->is_valid()
+    ? self_type{_buff, _hdr, TSMimeHdrFieldNextDup(_buff, _hdr, _loc )}
+    : self_type{};
+  }
 
 protected:
   HttpField(TSMBuffer buff, TSMLoc hdr_loc, TSMLoc field_loc);

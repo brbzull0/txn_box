@@ -1,4 +1,4 @@
-prefix=/home/solidwallofcode/git/txn_box/
+prefix=/home/amc/git/txn_box/
 exec_prefix=${prefix}
 includedir=${prefix}/include
 libdir=${exec_prefix}/lib

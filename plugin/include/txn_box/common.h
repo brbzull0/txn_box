@@ -72,13 +72,18 @@ struct Feature;
 using FeatureTuple = swoc::MemSpan<Feature>;
 
 /** Generic data.
- * This is used for two purposes -
+ * Two uses:
  * - Very specialized types that are not general enough to warrant a top level feature type.
  * - Extension types such that non-framework code can have its own feature (sub) type.
+ * This should be subclassed.
  */
 class Generic {
+public:
   swoc::TextView _tag; ///< Sub type identifier.
-  std::any _data; ///< Generic data.
+
+  Generic(swoc::TextView const& tag) : _tag(tag) {}
+  virtual ~Generic() {}
+  virtual swoc::TextView description() const { return _tag; }
 };
 
 /// Enumeration of types of values, e.g. those returned by a feature string or extractor.
@@ -92,7 +97,7 @@ enum ValueType : int8_t {
   BOOLEAN, ///< Boolean.
   CONS, ///< Pointer to cons cell.
   TUPLE, ///< Array of features (@c FeatureTuple)
-  GENERIC, ///< Externded type.
+  GENERIC, ///< Extended type.
   NO_VALUE, ///< No value, non-existent feature.
   VARIABLE, ///< Variable / indeterminate type.
   ACTIVE, ///< The active / current feature type.
@@ -105,7 +110,7 @@ template <> struct tuple_size<ValueType> : public std::integral_constant<size_t,
 // *** @c FeatureTypeList and @c FeatureType must be kept in parallel synchronization! ***
 /// Type list of feature types.
 /// The initial values in @c ValueType must match this list exactly.
-using FeatureTypeList = swoc::meta::type_list<std::monostate, FeatureView, intmax_t, swoc::IPAddr, bool, Cons *, FeatureTuple, Generic>;
+using FeatureTypeList = swoc::meta::type_list<std::monostate, FeatureView, intmax_t, swoc::IPAddr, bool, Cons *, FeatureTuple, Generic*>;
 
 /** Basic feature data type.
  * This is split out in order to make self-reference work. This is the actual variant, and
@@ -250,7 +255,7 @@ inline bool is_empty(Feature const& feature) { return IndexFor(NIL) == feature.i
  * sequence.
  *
  */
-Feature const& car(Feature const& feature);
+Feature car(Feature const& feature);
 
 /** Drop the first element in @a feature.
  *
@@ -261,8 +266,39 @@ Feature const& car(Feature const& feature);
  */
 Feature cdr(Feature const& feature);
 
+inline void clear(Feature & feature) {
+  if (auto gf = std::get_if<GENERIC>(&feature) ; gf) {
+    (*gf)->~Generic();
+  }
+  feature = NIL_FEATURE;
+}
+
+static constexpr swoc::TextView ACTIVE_FEATURE_KEY { "..." };
+
 /// Conversion between @c ValueType and printable names.
 extern swoc::Lexicon<ValueType> ValueTypeNames;
+
+class TupleIterator : public Generic {
+  using self_type = TupleIterator;
+  using super_type = Generic;
+public:
+  static constexpr swoc::TextView TAG { "ITERATOR" };
+
+  TupleIterator() : super_type{TAG} {}
+  virtual ~TupleIterator() {}
+
+  /// @return @c true if the iterator has a value, @c false if at end.
+  explicit virtual operator bool () const { return false; }
+
+  virtual Feature feature() const = 0;
+
+  /// Restart iteration
+  virtual self_type & rewind() = 0;
+
+  /// Iteration key, to distinguish the area of iteration.
+  virtual swoc::TextView iter_tag() const = 0;
+
+};
 
 // BufferWriter support.
 namespace swoc {

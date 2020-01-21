@@ -18,6 +18,7 @@
 
 #include "txn_box/common.h"
 #include "txn_box/Modifier.h"
+#include "ts_util.h"
 
 class Context;
 class FeatureGroup;
@@ -213,6 +214,44 @@ public:
 
 inline auto BooleanExtractor::result_type() const -> ValueType { return BOOLEAN; }
 
-class IterExtractor : public Extractor {
+class HttpFieldTuple : public TupleIterator {
+  using self_type = HttpFieldTuple;
+  using super_type = TupleIterator;
+public:
+  HttpFieldTuple(swoc::TextView const& key, ts::HttpHeader const& hdr, swoc::TextView const& name) : _key(key), _hdr(hdr), _name(name) {
+    this->rewind();
+  }
 
+  Feature feature() const override { return _current.value(); }
+
+  ts::HttpField && current() { return std::move(_current); }
+
+  self_type & operator ++ (int) {
+    std::swap(_next, _current);
+    this->update();
+    return *this;
+  }
+
+  self_type & rewind() override {
+    _current = _hdr.field(_name);
+    this->update();
+    return *this;
+  }
+
+  swoc::TextView iter_tag() const override { return _key; }
+protected:
+  swoc::TextView _key;
+  swoc::TextView _name; ///< Name of the field.
+  ts::HttpHeader _hdr; ///< Header with fields.
+  ts::HttpField _current; ///< Current header.
+  ts::HttpField _next; ///< Next header.
+
+  void update() {
+    if (_current.is_valid()) {
+      _next = _current.next_dup();
+    } else {
+      _next = ts::HttpField{};
+    }
+  }
 };
+

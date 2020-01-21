@@ -26,30 +26,6 @@ Extractor::Table Extractor::_ex_table;
 extern swoc::Lexicon<bool> PredicateNames;
 
 /* ------------------------------------------------------------------------------------ */
-Feature const& car(Feature const& feature) {
-  switch (feature.index()) {
-    case IndexFor(CONS):
-      return std::get<feature_type_for<CONS>>(feature)->_car;
-    case IndexFor(TUPLE):
-      return std::get<feature_type_for<TUPLE>>(feature)[0];
-  }
-  return feature;
-}
-
-Feature cdr(Feature const& feature) {
-  switch (feature.index()) {
-    case IndexFor(CONS):
-      return std::get<feature_type_for<CONS>>(feature)->_cdr;
-    case IndexFor(TUPLE): {
-      Feature cdr { feature };
-      auto &span = std::get<feature_type_for<TUPLE>>(cdr);
-      span.remove_prefix(1);
-      return span.empty() ? NIL_FEATURE : cdr;
-    }
-  }
-  return NIL_FEATURE; // No cdr unless explicitly supported.
-}
-/* ------------------------------------------------------------------------------------ */
 
 Errata Extractor::define(TextView name, self_type * ex) {
   _ex_table[name] = ex;
