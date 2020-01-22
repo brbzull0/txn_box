@@ -281,7 +281,7 @@ protected:
 
 bool Cmp_Contain::operator()(Context& ctx, TextView const& text, FeatureView & active) const {
   if (auto idx = active.find(text) ; idx != TextView::npos) {
-    if (ctx._active_p) {
+    if (ctx._update_remainder_p) {
       auto n = active.size() - text.size();
       auto span = ctx._arena->alloc(n).rebind<char>();
       memcpy(span, active.prefix(idx));
@@ -304,7 +304,7 @@ bool Cmp_ContainNC::operator()(Context& ctx, TextView const& text, FeatureView &
     auto spot = std::search(active.begin(), active.end(), text.begin(), text.end()
                             , [](char lhs, char rhs) { return tolower(lhs) == tolower(rhs); });
     if (spot != active.end()) {
-      if (ctx._active_p) {
+      if (ctx._update_remainder_p) {
         size_t idx = spot - active.begin();
         auto n = active.size() - text.size();
         auto span = ctx._arena->alloc(n).rebind<char>();
@@ -327,7 +327,8 @@ protected:
 bool Cmp_TLD::operator()(Context& ctx, TextView const& text, FeatureView & active) const {
   if (active.ends_with(text) && (text.size() == active.size() || active[active.size() - text.size() - 1] == '.')) {
     ctx.set_literal_capture(active.suffix(text.size()+1));
-    active.remove_suffix(text.size()+1);
+    ctx._remainder = active;
+    ctx._remainder.remove_suffix(text.size()+1);
     return true;
   }
   return false;
