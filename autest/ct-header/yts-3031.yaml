@@ -13,19 +13,22 @@ txn_box:
     - tld: "yimg.com"
       do:
       - creq-field<Cookie>: NULL
-      - with: ...  # check subdomains
+      - with: "{*}"  # check subdomains
         select:
         - match: "u" # for this one, tweak the Expect CT policy.
-          do
+          do:
             var<ct-policy>: "enforce" # set Expect-CT policy.
 
 - when: ursp
-  # if Set-Cookie has a Domain with yimg.com, clear the field.
-  - with-every: ursp-field<Set-Cookie>
-    select:
-    - rxp<nc>: "domain=(?:[^=]*[.])?yimg[.]com"
-      do:
-        ursp-field<...>: NULL
+  do:
+  # if any Set-Cookie field has a Domain with yimg.com, clear the field.
+  - with: ursp-field<Set-Cookie>::by-field
+    for-each:
+    - with: ...
+      select:
+      - rxp<nc>: "domain=(?:[^=]*[.])?yimg[.]com"
+        do:
+          ursp-field<...>: NULL
 
 - when: prsp
   do:
