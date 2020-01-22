@@ -6,7 +6,7 @@ txn_box:
 - when: creq
   do:
   # default Expect-CT policy.
-  - var<ct-policy>: "report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\"""
+  - var<ct-policy>: "report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
   - with: creq-host
     select:
     # yimg.com or any subdomain

@@ -390,6 +390,10 @@ Rv<Comparison::Handle> Cmp_LiteralString::load(Config &cfg, YAML::Node const& cm
     return options.f.nc
     ? Handle(new Cmp_Contain(std::move(expr)))
     : Handle(new Cmp_ContainNC(std::move(expr)));
+  } else if (TLD_KEY == key) {
+    return options.f.nc
+           ? Handle(new Cmp_TLD(std::move(expr)))
+           : Handle(new Cmp_TLDNC(std::move(expr)));
   }
 
   return Error(R"(Internal error, unrecognized key "{}".)", key);

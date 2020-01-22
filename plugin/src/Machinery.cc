@@ -1337,7 +1337,7 @@ swoc::Rv<Directive::Handle> With::load(Config& cfg, YAML::Node const& drtv_node,
 
     }
   }
-  return {};
+  return std::move(handle);
 }
 
 Errata With::load_case(Config & cfg, YAML::Node node) {

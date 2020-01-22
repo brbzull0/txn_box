@@ -284,8 +284,8 @@ Rv<Expr> Config::parse_expr_with_mods(YAML::Node node) {
     if (_feature_state) {
       _feature_state->_type = mod->result_type();
     }
-    expr._mods.emplace_back(std::move(mod));
     expr._result_type = mod->result_type();
+    expr._mods.emplace_back(std::move(mod));
   }
 
   return std::move(expr);
@@ -379,7 +379,7 @@ Rv<Directive::Handle> Config::load_directive(YAML::Node const& drtv_node)
         drtv_errata.info(R"()");
         return { {}, std::move(drtv_errata) };
       }
-      // Fill in config depending data and pass a pointer to it to the directive instance.
+      // Fill in config dependent data and pass a pointer to it to the directive instance.
       auto & rtti = _drtv_info[static_info._idx];
       if (++rtti._count == 1) { // first time this directive type has been used.
         rtti._idx = static_info._idx;

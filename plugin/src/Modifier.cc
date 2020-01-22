@@ -14,11 +14,11 @@ using swoc::Errata;
 using swoc::Rv;
 using namespace swoc::literals;
 
-/// Static mapping from modifer to factory.
+/// Static mapping from modifier to factory.
 Modifier::Factory Modifier::_factory;
 
 Errata Modifier::define(swoc::TextView name, Modifier::Worker const &f) {
-  if (auto spot = _factory.find(name) ; spot != _factory.end()) {
+  if (auto spot = _factory.find(name) ; spot == _factory.end()) {
     _factory.insert(spot, {name, f});
     return {};
   }
@@ -131,7 +131,7 @@ class Mod_Else : public Modifier {
   using self_type = Mod_Else;
   using super_type = Modifier;
 public:
-  static const std::string KEY; ///< Identifier name.
+  static constexpr TextView KEY { "else" }; ///< Identifier name.
 
   /** Modify the feature.
    *
@@ -165,8 +165,6 @@ protected:
 
   explicit Mod_Else(Expr && fmt) : _value(std::move(fmt)) {}
 };
-
-const std::string Mod_Else::KEY { "else" };
 
 bool Mod_Else::is_valid_for(ValueType ftype) const {
   return STRING == ftype || NIL == ftype;
