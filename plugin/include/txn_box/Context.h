@@ -110,10 +110,12 @@ public:
   Hook _cur_hook = Hook::INVALID;
   TSCont _cont = nullptr;
   ts::HttpTxn _txn = nullptr;
-  /// Current extracted feature data.
+  /// Current extracted feature.
   Feature _active;
+  /// Feature remnant, after matching.
+  FeatureView _remainder;
   /// Should the active feature be updated (e.g., is used later).
-  bool _active_p = false;
+  bool _update_remainder_p = false;
 
   void operator()(swoc::BufferWriter& w, Extractor::Spec const& spec);
 

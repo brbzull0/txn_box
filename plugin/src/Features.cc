@@ -31,6 +31,7 @@ swoc::Lexicon<ValueType> ValueTypeNames {{
   , { ValueType::IP_ADDR, "IP address"}
   , { ValueType::CONS, "cons" }
   , { ValueType::TUPLE, "tuple" }
+  , { ValueType::GENERIC, "generic"}
   , { ValueType::VARIABLE, "var" }
   , { ValueType::ACTIVE, "active" }
 }};
@@ -525,7 +526,7 @@ class Ex_with_feature : public Extractor {
   using self_type = Ex_with_feature; ///< Self reference type.
   using super_type = Extractor; ///< Parent type.
 public:
-  static constexpr TextView NAME { "..." };
+  static constexpr TextView NAME = ACTIVE_FEATURE_KEY;
   ValueType result_type() const override { return ACTIVE; }
   Feature extract(Context& ctx, Spec const& spec) override;
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
@@ -537,6 +538,25 @@ Feature Ex_with_feature::extract(class Context & ctx, const struct Extractor::Sp
 
 BufferWriter& Ex_with_feature::format(BufferWriter &w, Spec const &spec, Context &ctx) {
   return bwformat(w, spec, ctx._active);
+}
+/* ------------------------------------------------------------------------------------ */
+/// Extract the most recent selection feature.
+class Ex_remainder_feature : public Extractor {
+  using self_type = Ex_remainder_feature; ///< Self reference type.
+  using super_type = Extractor; ///< Parent type.
+public:
+  static constexpr TextView NAME = REMAINDER_FEATURE_KEY;
+  ValueType result_type() const override { return ACTIVE; }
+  Feature extract(Context& ctx, Spec const& spec) override;
+  BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
+};
+
+Feature Ex_remainder_feature::extract(class Context & ctx, const struct Extractor::Spec & spec) {
+  return ctx._remainder;
+}
+
+BufferWriter& Ex_remainder_feature::format(BufferWriter &w, Spec const &spec, Context &ctx) {
+  return bwformat(w, spec, ctx._remainder);
 }
 /* ------------------------------------------------------------------------------------ */
 BufferWriter& Ex_this::format(BufferWriter &w, Extractor::Spec const &spec, Context &ctx) {
@@ -574,10 +594,12 @@ Ex_cssn_proto cssn_proto;
 Ex_random random;
 
 Ex_with_feature ex_with_feature;
+Ex_remainder_feature ex_remainder_feature;
 
 [[maybe_unused]] bool INITIALIZED = [] () -> bool {
   Extractor::define(Ex_this::NAME, &ex_this);
   Extractor::define(Ex_with_feature::NAME, &ex_with_feature);
+  Extractor::define(Ex_remainder_feature::NAME, &ex_remainder_feature);
 
   Extractor::define(Ex_creq_url::NAME, &creq_url);
   Extractor::define(Ex_creq_host::NAME, &creq_host);
