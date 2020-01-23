@@ -26,14 +26,12 @@ Extractor::Table Extractor::_ex_table;
 extern swoc::Lexicon<bool> PredicateNames;
 
 /* ------------------------------------------------------------------------------------ */
-
 Errata Extractor::define(TextView name, self_type * ex) {
   _ex_table[name] = ex;
   return {};
 }
 
 bool Extractor::has_ctx_ref() const { return false; }
-
 /* ---------------------------------------------------------------------------------------------- */
 auto FeatureGroup::Tracking::find(swoc::TextView const &name) -> Tracking::Info * {
   Info * spot  = std::find_if(_info.begin(), _info.end(), [&](auto & t) { return 0 == strcasecmp(t._name, name); });

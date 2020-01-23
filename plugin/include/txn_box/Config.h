@@ -45,12 +45,6 @@ public:
 
   static const std::string ROOT_KEY; ///< Root key for plugin configuration.
 
-  /// Type of a view.
-  enum class StrType {
-    VIEW, ///< Standard view.
-    C, ///< C string
-  };
-
   /// Track the state of provided features.
   struct FeatureRefState {
     ValueType _type { STRING }; ///< Type of active feature.

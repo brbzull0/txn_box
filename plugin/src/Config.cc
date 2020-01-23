@@ -297,6 +297,10 @@ Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
   // This is the base entry method, so it needs to handle all cases, although most of them
   // will be delegated. Handle the direct / simple special cases here.
 
+  if (expr_node.IsNull()) { // explicit NULL
+    return Expr{NIL_FEATURE};
+  }
+
   // If explicitly marked a literal, then no further processing should be done.
   if (0 == strcasecmp(expr_tag, LITERAL_TAG)) {
     if (!expr_node.IsScalar()) {
@@ -307,9 +311,6 @@ Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
     return Error(R"("{}" tag for extractor expression is not supported.)", expr_tag);
   }
 
-  if (expr_node.IsNull()) { // explicit NULL
-    return Expr{NIL_FEATURE};
-  }
   if (expr_node.IsScalar()) {
     return this->parse_scalar_expr(expr_node);
   }
@@ -376,8 +377,8 @@ Rv<Directive::Handle> Config::load_directive(YAML::Node const& drtv_node)
       }
       auto && [ drtv, drtv_errata ] { worker(*this, drtv_node, name, arg, key_value) };
       if (! drtv_errata.is_ok()) {
-        drtv_errata.info(R"()");
-        return { {}, std::move(drtv_errata) };
+        drtv_errata.info(R"(While parsing directive at {}.)", drtv_node.Mark());
+        return std::move(drtv_errata);
       }
       // Fill in config dependent data and pass a pointer to it to the directive instance.
       auto & rtti = _drtv_info[static_info._idx];
@@ -389,7 +390,7 @@ Rv<Directive::Handle> Config::load_directive(YAML::Node const& drtv_node)
       }
       drtv->_rtti = &rtti;
 
-      return { std::move(drtv), {} };
+      return std::move(drtv);
     }
   }
   return Error(R"(Directive at {} has no recognized tag.)", drtv_node.Mark());
@@ -397,7 +398,7 @@ Rv<Directive::Handle> Config::load_directive(YAML::Node const& drtv_node)
 
 Rv<Directive::Handle> Config::parse_directive(YAML::Node const& drtv_node) {
   if (drtv_node.IsMap()) {
-    return { this->load_directive(drtv_node) };
+    return this->load_directive(drtv_node);
   } else if (drtv_node.IsSequence()) {
     Errata zret;
     auto list { new DirectiveList };
@@ -407,12 +408,13 @@ Rv<Directive::Handle> Config::parse_directive(YAML::Node const& drtv_node) {
       if (errata.is_ok()) {
         list->push_back(std::move(handle));
       } else {
-        return { {}, std::move(errata.error(R"(Failed to load directives at {})", drtv_node.Mark())) };
+        errata.info(R"(While loading directives at {}.)", drtv_node.Mark());
+        return std::move(errata);
       }
     }
-    return {std::move(drtv_list), {}};
+    return std::move(drtv_list);
   } else if (drtv_node.IsNull()) {
-    return {Directive::Handle(new NilDirective)};
+    return Directive::Handle(new NilDirective);
   }
   return Error(R"(Directive at {} is not an object or a sequence as required.)", drtv_node.Mark());
 }
@@ -490,7 +492,7 @@ Errata Config::parse_yaml(YAML::Node const& root, TextView path, Hook hook) {
     if ( auto node { base_node[key] } ; node ) {
       base_node = node;
     } else {
-      return Errata().error(R"(Key "{}" not found - no such key "{}".)", path, path.prefix(path.size() - p.size()).rtrim('.'));
+      return Error(R"(Key "{}" not found - no such key "{}".)", path, path.prefix(path.size() - p.size()).rtrim('.'));
     }
   }
 
@@ -508,8 +510,7 @@ Errata Config::parse_yaml(YAML::Node const& root, TextView path, Hook hook) {
       errata.note((this->*drtv_loader)(child));
     }
     if (! errata.is_ok()) {
-      errata.error(R"(Failure while loading list of top level directives for "{}" at {}.)",
-      path, base_node.Mark());
+      errata.info(R"(While loading list of top level directives for "{}" at {}.)", path, base_node.Mark());
     }
   } else if (base_node.IsMap()) {
     errata = (this->*drtv_loader)(base_node);

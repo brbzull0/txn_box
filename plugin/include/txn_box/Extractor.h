@@ -222,23 +222,15 @@ public:
     this->rewind();
   }
 
-  Feature feature() const override { return _current.value(); }
+  ts::HttpField & current() { return _current; }
 
-  ts::HttpField && current() { return std::move(_current); }
+  self_type & operator ++ (int);
 
-  self_type & operator ++ (int) {
-    std::swap(_next, _current);
-    this->update();
-    return *this;
-  }
-
-  self_type & rewind() override {
-    _current = _hdr.field(_name);
-    this->update();
-    return *this;
-  }
+  self_type & rewind() override;
 
   swoc::TextView iter_tag() const override { return _key; }
+  ValueType value_type() const { return STRING; }
+  Feature extract() const override;
 protected:
   swoc::TextView _key;
   swoc::TextView _name; ///< Name of the field.
@@ -246,12 +238,6 @@ protected:
   ts::HttpField _current; ///< Current header.
   ts::HttpField _next; ///< Next header.
 
-  void update() {
-    if (_current.is_valid()) {
-      _next = _current.next_dup();
-    } else {
-      _next = ts::HttpField{};
-    }
-  }
+  void update();
 };
 

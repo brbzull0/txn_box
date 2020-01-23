@@ -60,7 +60,7 @@ public:
   virtual bool operator()(Context&, swoc::IPAddr& addr) const { return false; }
   virtual bool operator()(Context&, Cons* cons) const { return false; }
   virtual bool operator()(Context&, FeatureTuple& tuple) const { return false; }
-  virtual bool operator()(Context&, Generic* g) const { return false; }
+  virtual bool operator()(Context&, Generic* g) const;
   /// @}
 
   bool operator()(Context& ctx, Feature& feature) const {

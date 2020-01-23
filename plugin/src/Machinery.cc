@@ -31,6 +31,8 @@ namespace bwf = swoc::bwf;
 using namespace swoc::literals;
 
 /* ------------------------------------------------------------------------------------ */
+Feature Generic::extract() const { return NIL_FEATURE; }
+/* ------------------------------------------------------------------------------------ */
 class Do_preq_url_host : public Directive {
   using super_type = Directive;
   using self_type = Do_preq_url_host;
@@ -359,7 +361,7 @@ Errata FieldDirective::invoke(Context & ctx, ts::HttpHeader && hdr) {
         if (TupleIterator::TAG == (*g)->_tag) {
           if (static_cast<TupleIterator*>(*g)->iter_tag() == this->key()) {
             auto & iter = *static_cast<HttpFieldTuple*>(*g);
-            this->apply(ctx, iter.current());
+            this->apply(ctx, std::move(iter.current()));
             return {};
           }
         }
@@ -493,7 +495,7 @@ protected:
 };
 
 const std::string Do_ursp_field::KEY { "ursp-field" };
-const HookMask Do_ursp_field::HOOKS { MaskFor(Hook::PRSP) };
+const HookMask Do_ursp_field::HOOKS { MaskFor(Hook::URSP) };
 
 Errata Do_ursp_field::invoke(Context &ctx) {
   return this->super_type::invoke(ctx, ctx.ursp_hdr());
@@ -1298,22 +1300,24 @@ swoc::Rv<Directive::Handle> With::load(Config& cfg, YAML::Node const& drtv_node,
   self->_ex = std::move(expr);
 
   YAML::Node select_node { drtv_node[SELECT_KEY] };
-  if (select_node.IsMap()) {
-    errata = self->load_case(cfg, select_node);
-    if (! errata.is_ok()) {
-      return std::move(errata);
-    }
-  } else if (select_node.IsSequence()) {
-    for (YAML::Node child : select_node) {
-      errata = (self->load_case(cfg, child));
+  if (select_node) {
+    if (select_node.IsMap()) {
+      errata = self->load_case(cfg, select_node);
       if (!errata.is_ok()) {
-        errata.error(R"(While loading "{}" directive at {} in "{}" at {}.)", KEY, drtv_node.Mark()
-                     , SELECT_KEY, select_node.Mark());
         return std::move(errata);
       }
+    } else if (select_node.IsSequence()) {
+      for (YAML::Node child : select_node) {
+        errata = (self->load_case(cfg, child));
+        if (!errata.is_ok()) {
+          errata.info(R"(While loading "{}" directive at {} in "{}" at {}.)", KEY, drtv_node.Mark()
+                       , SELECT_KEY, select_node.Mark());
+          return std::move(errata);
+        }
+      }
+    } else {
+      return Error(R"(The value for "{}" at {} in "{}" directive at {} is not a list or object.")", SELECT_KEY, select_node.Mark(), KEY, drtv_node.Mark());
     }
-  } else if (select_node) {
-    return Error(R"(The value for "{}" at {} in "{}" directive at {} is not a list or object.")", SELECT_KEY, select_node.Mark(), KEY, drtv_node.Mark());
   }
 
   YAML::Node do_node { drtv_node[DO_KEY] };
@@ -1325,7 +1329,8 @@ swoc::Rv<Directive::Handle> With::load(Config& cfg, YAML::Node const& drtv_node,
     if (errata.is_ok()) {
       self->_do = std::move(do_handle);
     } else {
-      return Error(R"(While parsing "{}" key at {} in selection case at {}.)", DO_KEY, do_node.Mark());
+      errata.info(R"(While parsing "{}" key at {} in selection case at {}.)", DO_KEY, do_node.Mark(), drtv_node.Mark());
+      return std::move(errata);
     }
   } else if (for_each_node) {
     auto &&[fe_handle, errata]{cfg.parse_directive(for_each_node)};
@@ -1333,8 +1338,8 @@ swoc::Rv<Directive::Handle> With::load(Config& cfg, YAML::Node const& drtv_node,
       self->_do = std::move(fe_handle);
       self->opt.f.for_each_p = true;
     } else {
-      return Error(R"(While parsing "{}" key at {} in selection case at {}.)", FOR_EACH_KEY, for_each_node.Mark());
-
+      errata.info(R"(While parsing "{}" key at {} in selection case at {}.)", FOR_EACH_KEY, for_each_node.Mark(), drtv_node.Mark());
+      return std::move(errata);
     }
   }
   return std::move(handle);
@@ -1351,7 +1356,7 @@ Errata With::load_case(Config & cfg, YAML::Node node) {
       if (cmp_errata.is_ok()) {
         c._cmp = std::move(cmp_handle);
       } else {
-        cmp_errata.error(R"(While parsing "{}" key at {}.)", SELECT_KEY, node.Mark());
+        cmp_errata.info(R"(While parsing "{}" key at {}.)", SELECT_KEY, node.Mark());
         return std::move(cmp_errata);
       }
     }
@@ -1366,7 +1371,7 @@ Errata With::load_case(Config & cfg, YAML::Node node) {
       if (errata.is_ok()) {
         c._do = std::move(handle);
       } else {
-        errata.error(R"(While parsing "{}" key at {} in selection case at {}.)", DO_KEY
+        errata.info(R"(While parsing "{}" key at {} in selection case at {}.)", DO_KEY
                      , do_node.Mark(), node.Mark());
         return errata;
       }
@@ -1377,7 +1382,7 @@ Errata With::load_case(Config & cfg, YAML::Node node) {
     _cases.emplace_back(std::move(c));
     return {};
   }
-  return Errata().error(R"(The value at {} for "{}" is not an object as required.")", node.Mark(), SELECT_KEY);
+  return Error(R"(The value at {} for "{}" is not an object as required.")", node.Mark(), SELECT_KEY);
 }
 
 /* ------------------------------------------------------------------------------------ */

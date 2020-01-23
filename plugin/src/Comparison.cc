@@ -31,6 +31,11 @@ Errata Comparison::define(swoc::TextView name, ValueMask const& types, Compariso
   return {};
 }
 
+bool Comparison::operator()(Context &ctx, Generic *g) const {
+  Feature f { g->extract() };
+  return IndexFor(GENERIC) == f.index() ? false : (*this)(ctx, f);
+}
+
 Rv<Comparison::Handle> Comparison::load(Config & cfg, ValueType ftype, YAML::Node node) {
   for ( auto const& [ key_node, value_node ] : node ) {
     TextView key { key_node.Scalar() };
@@ -164,7 +169,7 @@ protected:
   };
 };
 
-const ValueMask Cmp_LiteralString::TYPES {MaskFor({ STRING, TUPLE }) };
+const ValueMask Cmp_LiteralString::TYPES = MaskFor({ STRING, TUPLE });
 
 Cmp_LiteralString::Cmp_LiteralString(Expr && expr) : _expr(std::move(expr)) {}
 
@@ -405,7 +410,6 @@ class Cmp_Rxp : public Cmp_String {
 
 public:
   static constexpr TextView KEY { "rxp" };
-  /// Mark for @c STRING support only.
   static const ValueMask TYPES;
 
   static Rv<Comparison::Handle> load(Config &cfg, YAML::Node const& cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node);
@@ -427,25 +431,8 @@ protected:
   };
 
   struct rxp_visitor {
-    bool operator() (Rxp const& rxp) {
-      auto result = rxp(_src, _ctx.rxp_working_match_data());
-      if (result > 0) {
-        _ctx.rxp_commit_match(_src);
-        return true;
-      }
-      return false;
-    }
-
-    bool operator() (Expr const& expr) {
-      auto f = _ctx.extract(expr);
-      if (auto text = std::get_if<IndexFor(STRING)>(&f) ; text != nullptr ) {
-        auto &&[rxp, rxp_errata]{Rxp::parse(*text, _rxp_opt)};
-        if (rxp_errata.is_ok()) {
-          return (*this)(rxp);
-        }
-      }
-      return false;
-    }
+    bool operator() (Rxp const& rxp);
+    bool operator() (Expr const& expr);
 
     Context & _ctx;
     Rxp::Options _rxp_opt;
@@ -506,26 +493,32 @@ protected:
     Rxp::Options _rxp_opt;
   };
 
-  bool operator()(Context &ctx, FeatureView &active) const override {
-    return std::any_of(_rxp.begin(), _rxp.end(), [&](Item const& item) {
-      return std::visit(rxp_visitor{ctx, _opt}, item);
-    });
-  }
+  bool operator()(Context &ctx, FeatureView &active) const override;
 
   Rxp::Options _opt;
   std::vector<Item> _rxp;
 };
 
-const ValueMask Cmp_Rxp::TYPES {MaskFor({ STRING, TUPLE }) };
+const ValueMask Cmp_Rxp::TYPES {MaskFor({ STRING, ACTIVE }) };
 
-Cmp_RxpSingle::Cmp_RxpSingle(Expr && expr, Rxp::Options opt) : _rxp(std::move(expr)), _opt(opt) {
+bool Cmp_Rxp::rxp_visitor::operator()(const Rxp &rxp) {
+  auto result = rxp(_src, _ctx.rxp_working_match_data());
+  if (result > 0) {
+    _ctx.rxp_commit_match(_src);
+    return true;
+  }
+  return false;
 }
 
-Cmp_RxpSingle::Cmp_RxpSingle(Rxp && rxp) : _rxp(std::move(rxp)) {
-}
-
-bool Cmp_RxpSingle::operator()(Context & ctx, FeatureView & active) const {
-  return std::visit(rxp_visitor{ctx, _opt, active}, _rxp);
+bool Cmp_Rxp::rxp_visitor::operator() (Expr const& expr) {
+  auto f = _ctx.extract(expr);
+  if (auto text = std::get_if<IndexFor(STRING)>(&f) ; text != nullptr ) {
+    auto &&[rxp, rxp_errata]{Rxp::parse(*text, _rxp_opt)};
+    if (rxp_errata.is_ok()) {
+      return (*this)(rxp);
+    }
+  }
+  return false;
 }
 
 Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Feature & f) {
@@ -576,7 +569,23 @@ Rv<Comparison::Handle> Cmp_Rxp::load(Config &cfg, YAML::Node const& cmp_node, Te
   rxp_opt.f.nc = options.f.nc;
   return std::visit(expr_visitor{cfg, rxp_opt}, expr._expr);
 }
-/* ------------------------------------------------------------------------------------ */
+
+Cmp_RxpSingle::Cmp_RxpSingle(Expr && expr, Rxp::Options opt) : _rxp(std::move(expr)), _opt(opt) {
+}
+
+Cmp_RxpSingle::Cmp_RxpSingle(Rxp && rxp) : _rxp(std::move(rxp)) {
+}
+
+bool Cmp_RxpSingle::operator()(Context & ctx, FeatureView & active) const {
+  return std::visit(rxp_visitor{ctx, _opt, active}, _rxp);
+}
+
+bool Cmp_RxpList::operator()(Context &ctx, FeatureView &active) const {
+  return std::any_of(_rxp.begin(), _rxp.end(), [&](Item const&item) {
+    return std::visit(rxp_visitor{ctx, _opt}, item);
+  });
+}
+
 /* ------------------------------------------------------------------------------------ */
 swoc::Lexicon<BoolTag> BoolNames { { BoolTag::True, { "true", "1", "on", "enable", "Y", "yes" }}
                                    , { BoolTag::False, { "false", "0", "off", "disable", "N", "no" }}

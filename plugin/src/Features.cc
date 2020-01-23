@@ -46,11 +46,10 @@ Feature car(Feature const& feature) {
       return std::get<IndexFor(TUPLE)>(feature)[0];
     case IndexFor(GENERIC):{
       auto gf = std::get<IndexFor(GENERIC)>(feature);
-      if (gf && gf->description() == TupleIterator::TAG) {
-        return static_cast<TupleIterator*>(gf)->feature();
+      if (gf) {
+        return gf->extract();
       }
     }
-
   }
   return feature;
 }
@@ -308,10 +307,8 @@ BufferWriter& Ex_creq_field::format(BufferWriter &w, Spec const &spec, Context &
   return bwformat(w, spec, this->direct_view(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
-class Ex_prsp_field : public DirectFeature {
+class ExHttpField : public DirectFeature {
 public:
-  static constexpr TextView NAME { "prsp-field" };
-
   swoc::Errata validate(Config & cfg, Spec & spec, TextView const& arg) override {
     auto span = cfg.span<Data>(1);
     spec._data = span;
@@ -340,12 +337,16 @@ protected:
       } f;
     } opt;
   };
+
+  /// @return The key (name) for the extractor.
+  virtual TextView const& key() const = 0;
+  virtual ts::HttpHeader hdr(Context & ctx) const = 0;
 };
 
-Feature Ex_prsp_field::extract(Context &ctx, const Spec &spec) {
+Feature ExHttpField::extract(Context &ctx, const Spec &spec) {
   Data & data = spec._data.rebind<Data>()[0];
   if (data.opt.f.by_field) {
-    auto iter = ctx._arena->make<HttpFieldTuple>(NAME, ctx.prsp_hdr(), data._arg);
+    auto iter = ctx._arena->make<HttpFieldTuple>(this->key(), ctx.prsp_hdr(), data._arg);
     return iter;
   } else if (data.opt.f.by_value) {
     return NIL_FEATURE;
@@ -353,11 +354,11 @@ Feature Ex_prsp_field::extract(Context &ctx, const Spec &spec) {
   return this->direct_view(ctx, spec);
 }
 
-FeatureView Ex_prsp_field::direct_view(Context &ctx, Spec const& spec) const {
+FeatureView ExHttpField::direct_view(Context &ctx, Spec const& spec) const {
   FeatureView zret;
   zret._direct_p = true;
   zret = TextView{};
-  if ( ts::HttpHeader hdr { ctx.prsp_hdr() } ; hdr.is_valid()) {
+  if ( ts::HttpHeader hdr { this->hdr(ctx) } ; hdr.is_valid()) {
     if ( auto field { hdr.field(spec._data.view()) } ; field.is_valid()) {
       zret = field.value();
     }
@@ -365,9 +366,61 @@ FeatureView Ex_prsp_field::direct_view(Context &ctx, Spec const& spec) const {
   return zret;
 };
 
-BufferWriter& Ex_prsp_field::format(BufferWriter &w, Spec const &spec, Context &ctx) {
+BufferWriter& ExHttpField::format(BufferWriter &w, Spec const &spec, Context &ctx) {
   return bwformat(w, spec, this->direct_view(ctx, spec));
 }
+
+// -----
+class Ex_prsp_field : public ExHttpField {
+public:
+  static constexpr TextView NAME { "prsp-field" };
+
+protected:
+  TextView const& key() const override;
+  ts::HttpHeader hdr(Context & ctx) const override;
+};
+
+TextView const& Ex_prsp_field::key() const { return NAME; }
+ts::HttpHeader Ex_prsp_field::hdr(Context & ctx) const {
+  return ctx.prsp_hdr();
+}
+// -----
+class Ex_ursp_field : public ExHttpField {
+public:
+  static constexpr TextView NAME { "ursp-field" };
+
+protected:
+  TextView const& key() const override;
+  ts::HttpHeader hdr(Context & ctx) const override;
+};
+
+TextView const& Ex_ursp_field::key() const { return NAME; }
+ts::HttpHeader Ex_ursp_field::hdr(Context & ctx) const {
+  return ctx.ursp_hdr();
+}
+
+void HttpFieldTuple::update() {
+  if (_current.is_valid()) {
+    _next = _current.next_dup();
+  } else {
+    _next = ts::HttpField{};
+  }
+}
+
+HttpFieldTuple& HttpFieldTuple::rewind() {
+  _current = _hdr.field(_name);
+  this->update();
+  return *this;
+}
+
+HttpFieldTuple& HttpFieldTuple::operator++(int) {
+  std::swap(_next, _current);
+  this->update();
+  return *this;
+}
+
+Feature HttpFieldTuple::extract() const { return _current.value(); }
+
 /* ------------------------------------------------------------------------------------ */
 class Ex_ursp_status : public IntegerExtractor {
 public:
@@ -519,25 +572,28 @@ Errata Ex_random::validate(Config &cfg, Extractor::Spec &spec, TextView const &a
   values[1] = max;
   return {};
 }
-
 /* ------------------------------------------------------------------------------------ */
-/// Extract the most recent selection feature.
-class Ex_with_feature : public Extractor {
-  using self_type = Ex_with_feature; ///< Self reference type.
+/// The active feature.
+class Ex_active_feature : public Extractor {
+  using self_type = Ex_active_feature; ///< Self reference type.
   using super_type = Extractor; ///< Parent type.
 public:
   static constexpr TextView NAME = ACTIVE_FEATURE_KEY;
-  ValueType result_type() const override { return ACTIVE; }
+  ValueType result_type() const override;
   Feature extract(Context& ctx, Spec const& spec) override;
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
 };
 
-Feature Ex_with_feature::extract(class Context & ctx, const struct Extractor::Spec & spec) {
+Feature Ex_active_feature::extract(class Context & ctx, const struct Extractor::Spec & spec) {
   return ctx._active;
 }
 
-BufferWriter& Ex_with_feature::format(BufferWriter &w, Spec const &spec, Context &ctx) {
+BufferWriter& Ex_active_feature::format(BufferWriter &w, Spec const &spec, Context &ctx) {
   return bwformat(w, spec, ctx._active);
+}
+
+ValueType Ex_active_feature::result_type() const {
+  return ACTIVE;
 }
 /* ------------------------------------------------------------------------------------ */
 /// Extract the most recent selection feature.
@@ -546,7 +602,7 @@ class Ex_remainder_feature : public Extractor {
   using super_type = Extractor; ///< Parent type.
 public:
   static constexpr TextView NAME = REMAINDER_FEATURE_KEY;
-  ValueType result_type() const override { return ACTIVE; }
+  ValueType result_type() const override { return STRING; }
   Feature extract(Context& ctx, Spec const& spec) override;
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
 };
@@ -587,6 +643,7 @@ Ex_creq_url_host creq_url_host;
 Ex_creq_field creq_field;
 
 Ex_prsp_field prsp_field;
+Ex_ursp_field ursp_field;
 
 Ex_ursp_status ursp_status;
 Ex_is_internal is_internal;
@@ -596,12 +653,12 @@ Ex_cssn_proto cssn_proto;
 
 Ex_random random;
 
-Ex_with_feature ex_with_feature;
+Ex_active_feature ex_with_feature;
 Ex_remainder_feature ex_remainder_feature;
 
 [[maybe_unused]] bool INITIALIZED = [] () -> bool {
   Extractor::define(Ex_this::NAME, &ex_this);
-  Extractor::define(Ex_with_feature::NAME, &ex_with_feature);
+  Extractor::define(Ex_active_feature::NAME, &ex_with_feature);
   Extractor::define(Ex_remainder_feature::NAME, &ex_remainder_feature);
 
   Extractor::define(Ex_creq_url::NAME, &creq_url);
@@ -613,6 +670,7 @@ Ex_remainder_feature ex_remainder_feature;
   Extractor::define(Ex_creq_field::NAME, &creq_field);
 
   Extractor::define(Ex_prsp_field::NAME, &prsp_field);
+  Extractor::define(Ex_ursp_field::NAME, &ursp_field);
 
   Extractor::define(Ex_ursp_status::NAME, &ursp_status);
   Extractor::define(Ex_is_internal::NAME, &is_internal);
