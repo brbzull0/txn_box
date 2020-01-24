@@ -295,7 +295,7 @@ TextView ts::HttpSsn::proto_contains(const swoc::TextView &tag) const {
     probe.assign(span, tag.size() + 1);
   }
   auto result = TSHttpSsnClientProtocolStackContains(_ssn, probe.data());
-  return { result, strlen(result) };
+  return { result, result ? strlen(result) : 0 };
 }
 
 Errata ts::HttpTxn::cache_key_assign(TextView const &key) {
