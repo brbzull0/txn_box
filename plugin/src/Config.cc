@@ -181,6 +181,7 @@ Rv<Expr> Config::parse_unquoted_expr(swoc::TextView const& text) {
 }
 
 Rv<Expr> Config::parse_composite_expr(TextView const& text) {
+  ValueType single_vt;
   auto parser { swoc::bwf::Format::bind(text) };
   std::vector<Extractor::Spec> specs;
   // Used to handle literals in @a format_string. Can't be const because it must be updated
@@ -203,8 +204,9 @@ Rv<Expr> Config::parse_composite_expr(TextView const& text) {
       if (spec._idx >= 0) {
         specs.push_back(spec);
       } else {
-        Errata errata = this->validate(spec);
+        auto && [vt, errata] = this->validate(spec);
         if (errata.is_ok()) {
+          single_vt = vt; // Save for singleton case.
           specs.push_back(spec);
         } else {
           errata.info(R"(While parsing specifier at offset {}.)", text.size() - parser._fmt.size());
@@ -217,7 +219,7 @@ Rv<Expr> Config::parse_composite_expr(TextView const& text) {
   // If it is a singleton, return it as one of the singleton types.
   if (specs.size() == 1) {
     if (specs[0]._exf) {
-      return Expr{specs[0]};
+      return Expr{specs[0], single_vt};
     } else if (specs[0]._type == Extractor::Spec::LITERAL_TYPE) {
       return Expr{FeatureView(this->localize(specs[0]._ext))};
     } else {
