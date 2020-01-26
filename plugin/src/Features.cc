@@ -318,7 +318,7 @@ public:
     } else if (0 == strcasecmp(spec._ext, "by-value"_tv)) {
       data.opt.f.by_value = true;
     }
-    return STRING;
+    return data.opt.f.by_field ? GENERIC : STRING;
   }
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;

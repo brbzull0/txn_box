@@ -62,7 +62,7 @@ sessions:
       headers:
         fields:
         - [ Host, example.one ]
-        - [ Cookie, "V1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; GUC=AQEBAQFeK1JeM0If1wSb; A1S=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; uvts=24ce92ce-6bef-4940-5676-ccce503e26f6; APID=UP53275975-3e1e-11ea-b6a9-0e860b33a8b3; cmp=t=1579898053&j=0; apeaf=userintent%3D%257B%2522tooltipViews%2522%253A3%257D; APIDTS=1579898054; B=3vgt4fpf24ibu&b=3&s=o9", equal ]
+        - [ Cookie, "V1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; GUC=AQEBAQFeK1JeM0If1wSb; A1S=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; uvts=24ce92ce-6bef-4940-5676-ccce503e26f6; APID=UP53275975-3e1e-11ea-b6a9-0e860b33a8b3; cmp=t=1579898053&j=0; apeaf=userintent%3D%257B%2522tooltipViews%2522%253A3%257D; APIDTS=1579898054; B=3vgt4fpf24ibu&b=3&s=o9" ]
         - [ uuid, 5 ]
     server-response:
       status: 200
@@ -154,7 +154,7 @@ sessions:
         fields:
         - [ Content-Type, text/html ]
         - [ Content-Length, 3072 ]
-        - [ set-cookie, A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly ]
+        - [ set-cookie, "A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly" ]
         - [ uuid, 2 ]
     proxy-response:
       status: 200
@@ -165,7 +165,7 @@ sessions:
         fields:
         - [ Content-Type, text/html ]
         - [ Content-Length, 3072 ]
-        - [ set-cookie, A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly ]
+        - [ set-cookie, "A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly" ]
         - [ uuid, 2 ]
 
   # Does set-cookie get through?
@@ -196,8 +196,8 @@ sessions:
         fields:
         - [ Content-Type, text/html ]
         - [ Content-Length, 3072 ]
-        - [ set-cookie, A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly ]
-        - [ set-cookie, A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=None; Secure; HttpOnly ]
+        - [ set-cookie, "A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly" ]
+        - [ set-cookie, "A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=None; Secure; HttpOnly" ]
         - [ uuid, 3 ]
     proxy-response:
       status: 200
@@ -208,8 +208,8 @@ sessions:
         fields:
         - [ Content-Type, text/html ]
         - [ Content-Length, 3072 ]
-        - [ set-cookie, A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly ]
-        - [ set-cookie, A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=None; Secure; HttpOnly ]
+        - [ set-cookie, "A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly" ]
+        - [ set-cookie, "A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=None; Secure; HttpOnly" ]
         - [ uuid, 3 ]
 
   # Actual prod set-cookie group.
@@ -243,6 +243,7 @@ sessions:
         - [ set-cookie, A1=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure; HttpOnly ]
         - [ set-cookie, A3=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Max-Age=31557600; Domain=.yahoo.com; Path=/; SameSite=None; Secure; HttpOnly ]
         - [ set-cookie, A1S=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Domain=.yahoo.com; Path=/; SameSite=Lax; Secure ]
+        - [ set-cookie, TARGET=d=AQABBOwAKl4CEHhhMYGPgqPDtrDE-lZJ1EEFEgEBAQFSK14zXgAAAAAA_SMAAAcIfkkiXn6kwz8&S=AQAAAvbDdNlyRU0neZmPg97sQC8; Domain=.yimg.com; Path=/; SameSite=Lax; Secure ]
         - [ set-cookie, B=3vgt4fpf24ibu&b=3&s=o9; Max-Age=31557600; Domain=.yahoo.com; Path=/ ]
         - [ set-cookie, GUC=AQEBAQFeK1JeM0If1wSb; Max-Age=31557600; Domain=.yahoo.com; Path=/; Secure ]
         - [ uuid, 4 ]
