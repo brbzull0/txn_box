@@ -105,13 +105,13 @@ public:
   Expr(Direct && d) : _expr(std::move(d)), _result_type(STRING) {}
   Expr(Composite && comp) : _expr(std::move(comp)), _result_type(STRING) {}
 
-  Expr(Spec const& spec) {
+  Expr(Spec const& spec, ValueType vt) {
     if (spec._exf && spec._exf->is_direct()) {
       _expr.emplace<DIRECT>(spec);
     } else {
       auto & comp { _expr.emplace<Expr::COMPOSITE>() };
       comp._specs.push_back(spec);
-      _result_type = spec._exf->result_type();
+      _result_type = vt;
       _max_arg_idx = spec._idx;
     }
   }

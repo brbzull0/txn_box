@@ -120,7 +120,7 @@ FeatureNodeStyle Config::feature_node_style(YAML::Node value) {
   return FeatureNodeStyle::INVALID;
 }
 
-Errata Config::update_extractor(Extractor::Spec &spec) {
+Rv<ValueType> Config::validate(Extractor::Spec &spec) {
   if (spec._name.empty()) {
     return Error(R"(Extractor name required but not found.)");
   }
@@ -135,15 +135,15 @@ Errata Config::update_extractor(Extractor::Spec &spec) {
     if (auto ex{Extractor::find(name)}; nullptr != ex) {
       spec._exf = ex;
       spec._name = name;
-      auto errata { ex->validate(*this, spec, arg) };
+      auto && [ vt, errata ] { ex->validate(*this, spec, arg) };
       if (! errata.is_ok()) {
         return std::move(errata);
       }
-    } else {
-      return Error(R"(Extractor "{}" not found.)", name);
+      return vt;
     }
+    return Error(R"(Extractor "{}" not found.)", name);
   }
-  return {};
+  return STRING;
 }
 
 Rv<Expr> Config::parse_unquoted_expr(swoc::TextView const& text) {
@@ -172,12 +172,12 @@ Rv<Expr> Config::parse_unquoted_expr(swoc::TextView const& text) {
   if (!valid_p) {
     return Error(R"(Invalid syntax for extractor "{}" - not a valid specifier.)", text);
   }
-  auto errata = this->update_extractor(spec);
+  auto && [ vt, errata ] = this->validate(spec);
   if (! errata.is_ok()) {
     return std::move(errata);
   }
 
-  return Expr{spec};
+  return Expr{spec, vt};
 }
 
 Rv<Expr> Config::parse_composite_expr(TextView const& text) {
@@ -203,7 +203,7 @@ Rv<Expr> Config::parse_composite_expr(TextView const& text) {
       if (spec._idx >= 0) {
         specs.push_back(spec);
       } else {
-        Errata errata = this->update_extractor(spec);
+        Errata errata = this->validate(spec);
         if (errata.is_ok()) {
           specs.push_back(spec);
         } else {

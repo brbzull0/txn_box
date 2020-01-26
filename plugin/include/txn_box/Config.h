@@ -277,7 +277,7 @@ protected:
   /** Update the (possible) extractor reference in @a spec.
    *
    * @param spec Specifier to update.
-   * @return Errors, if any.
+   * @return Value type of the specifier / extractor, or errors if invalid.
    *
    * @a spec is updated in place. If it is an extractor the extractor pointer in @a spec is updated.
    * This also validates the extractor can handle the @a spec details and enables config based
@@ -285,7 +285,7 @@ protected:
    *
    * @see Extractor::validate
    */
-  Errata update_extractor(Extractor::Spec &spec);
+  swoc::Rv<ValueType> validate(Extractor::Spec &spec);
 };
 
 inline Hook Config::current_hook() const { return _hook; }

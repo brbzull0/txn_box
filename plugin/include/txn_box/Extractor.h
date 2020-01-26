@@ -51,12 +51,12 @@ public:
    * @param cfg Configuration.
    * @param spec Specifier used in the feature string for the extractor.
    * @param arg Argument for the extractor.
-   * @return Errors, if any.
+   * @return The value type for @a spec and @a arg.
    *
-   * The base implementation always succeeds. If an extractor needs to do additional validation
-   * it should chain this method.
+   * The base implementation returns successfully as a @c STRING. If the extractor returns some other
+   * type or needs to actually validate @a spec, it must override this method.
    */
-  virtual swoc::Errata validate(Config & cfg, Spec & spec, swoc::TextView const& arg) { return {}; }
+  virtual swoc::Rv<ValueType> validate(Config & cfg, Spec & spec, swoc::TextView const& arg) { return STRING; }
 
   /// @defgroup Properties.
   /// Property methods for extractors.
@@ -69,7 +69,7 @@ public:
    * @note All features can be extracted as strings if needed. This type provides the ability to
    * do more specific type processing for singleton extractions.
    */
-  virtual ValueType result_type() const = 0;
+//  virtual ValueType result_type() const = 0;
 
   virtual bool is_direct() const { return false; }
 
@@ -150,7 +150,8 @@ public:
   Ex_this() = default;
   explicit Ex_this(FeatureGroup& fg) : _fg(&fg) {}
 
-  ValueType result_type() const override;
+  virtual swoc::Rv<ValueType> validate(Config & cfg, Spec & spec, swoc::TextView const& arg) { return VARIABLE; }
+
   Feature extract(Context& ctx, Spec const& spec);
 
   /// Required text formatting access.

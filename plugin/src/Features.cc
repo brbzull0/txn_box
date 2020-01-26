@@ -20,6 +20,7 @@
 using swoc::TextView;
 using swoc::BufferWriter;
 using swoc::Errata;
+using swoc::Rv;
 namespace bwf = swoc::bwf;
 using namespace swoc::literals;
 
@@ -111,9 +112,7 @@ class Ex_var : public Extractor {
 public:
   static constexpr TextView NAME { "var" };
 
-  ValueType result_type() const override { return VARIABLE; }
-
-  Errata validate(Config & cfg, Spec & spec, TextView const& arg) override;
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override;
 
   /// Extract the feature from the @a ctx.
   Feature extract(Context& ctx, Extractor::Spec const&) override;
@@ -121,11 +120,11 @@ public:
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
 };
 
-Errata Ex_var::validate(class Config & cfg, struct Extractor::Spec & spec, const class swoc::TextView & arg) {
+Rv<ValueType> Ex_var::validate(class Config & cfg, struct Extractor::Spec & spec, const class swoc::TextView & arg) {
   auto name = cfg.span<feature_type_for<STRING>>(1);
   spec._data = name.rebind<void>();
   name[0] = cfg.localize(arg);
-  return {};
+  return VARIABLE;
 }
 
 Feature Ex_var::extract(Context &ctx, Spec const& spec) {
@@ -282,9 +281,9 @@ class Ex_creq_field : public DirectFeature {
 public:
   static constexpr TextView NAME { "creq-field" };
 
-  swoc::Errata validate(Config & cfg, Spec & spec, TextView const& arg) override {
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override {
     spec._data.assign(const_cast<char*>(arg.data()), arg.size());
-    return {};
+    return STRING;
   }
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
@@ -309,7 +308,7 @@ BufferWriter& Ex_creq_field::format(BufferWriter &w, Spec const &spec, Context &
 /* ------------------------------------------------------------------------------------ */
 class ExHttpField : public DirectFeature {
 public:
-  swoc::Errata validate(Config & cfg, Spec & spec, TextView const& arg) override {
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override {
     auto span = cfg.span<Data>(1);
     spec._data = span;
     auto & data = span[0];
@@ -319,7 +318,7 @@ public:
     } else if (0 == strcasecmp(spec._ext, "by-value"_tv)) {
       data.opt.f.by_value = true;
     }
-    return {};
+    return STRING;
   }
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
@@ -485,12 +484,12 @@ class Ex_cssn_proto : public StringExtractor {
 public:
   static constexpr TextView NAME { "cssn-proto" };
 
-  Errata validate(Config & cfg, Spec & spec, TextView const& arg) override;
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override;
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
 };
 
-Errata Ex_cssn_proto::validate(Config &cfg, Spec &spec, const TextView &arg) {
+Rv<ValueType> Ex_cssn_proto::validate(Config &cfg, Spec &spec, const TextView &arg) {
   if (arg.empty()) {
     return Error(R"("{}" extractor requires an argument to use as a protocol prefix.)", NAME);
   }
@@ -500,7 +499,7 @@ Errata Ex_cssn_proto::validate(Config &cfg, Spec &spec, const TextView &arg) {
   text[arg.size()] = 0; // API call, need C string.
   view[0].assign(text.data(), arg.size() + 1);
   spec._data = view.rebind<void>();
-  return {};
+  return STRING;
 }
 
 BufferWriter& Ex_cssn_proto::format(BufferWriter &w, Spec const &spec, Context &ctx) {
@@ -515,7 +514,7 @@ class Ex_random : public IntegerExtractor {
 public:
   static constexpr TextView NAME { "random" };
 
-  Errata validate(Config & cfg, Spec & spec, TextView const& arg) override;
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override;
 
   /// Extract the feature from the @a ctx.
   Feature extract(Context& ctx, Extractor::Spec const& spec) override;
@@ -538,7 +537,7 @@ BufferWriter& Ex_random::format(BufferWriter &w, Extractor::Spec const &spec, Co
   return bwformat(w, spec, this->extract(ctx, spec));
 }
 
-Errata Ex_random::validate(Config &cfg, Extractor::Spec &spec, TextView const &arg) {
+Rv<ValueType> Ex_random::validate(Config &cfg, Extractor::Spec &spec, TextView const &arg) {
   auto values = cfg.span<feature_type_for<INTEGER>>(2);
   spec._data = values.rebind<void>();
   feature_type_for<INTEGER> min = 0, max = 99;
@@ -570,7 +569,7 @@ Errata Ex_random::validate(Config &cfg, Extractor::Spec &spec, TextView const &a
 
   values[0] = min;
   values[1] = max;
-  return {};
+  return INTEGER;
 }
 /* ------------------------------------------------------------------------------------ */
 /// The active feature.
@@ -579,7 +578,7 @@ class Ex_active_feature : public Extractor {
   using super_type = Extractor; ///< Parent type.
 public:
   static constexpr TextView NAME = ACTIVE_FEATURE_KEY;
-  ValueType result_type() const override;
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override { return ACTIVE; }
   Feature extract(Context& ctx, Spec const& spec) override;
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
 };
@@ -592,9 +591,6 @@ BufferWriter& Ex_active_feature::format(BufferWriter &w, Spec const &spec, Conte
   return bwformat(w, spec, ctx._active);
 }
 
-ValueType Ex_active_feature::result_type() const {
-  return ACTIVE;
-}
 /* ------------------------------------------------------------------------------------ */
 /// Extract the most recent selection feature.
 class Ex_remainder_feature : public Extractor {
@@ -602,7 +598,7 @@ class Ex_remainder_feature : public Extractor {
   using super_type = Extractor; ///< Parent type.
 public:
   static constexpr TextView NAME = REMAINDER_FEATURE_KEY;
-  ValueType result_type() const override { return STRING; }
+  Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override { return STRING; }
   Feature extract(Context& ctx, Spec const& spec) override;
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
 };
@@ -619,8 +615,6 @@ BufferWriter& Ex_this::format(BufferWriter &w, Extractor::Spec const &spec, Cont
   Feature feature {_fg->extract(ctx, spec._ext)};
   return bwformat(w, spec, feature);
 }
-
-auto Ex_this::result_type() const -> ValueType { return VARIABLE; }
 
 Feature Ex_this::extract(class Context & ctx, const struct Extractor::Spec & spec) {
   return _fg->extract(ctx, spec._ext);
