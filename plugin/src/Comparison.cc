@@ -158,11 +158,11 @@ protected:
     bool _nested_p = false;
 
     bool operator () (std::monostate const& nil) { return false; }
-    bool operator () (Feature const& f) { return f.index() == IndexFor(STRING); }
-    bool operator () (Expr::Direct const& d) { return true; }
+    bool operator () (Feature const& f) { return ValueTypeOf(f) == STRING; }
+    bool operator () (Expr::Direct const& d) { return d._result_type == STRING; }
     bool operator () (Expr::Composite const& comp) { return true; }
-    bool operator () (Expr::Tuple const& t) {
-      return !_nested_p && std::all_of(t._exprs.begin(), t._exprs.end(), [](Expr const& x) {
+    bool operator () (Expr::List const& list) {
+      return !_nested_p && std::all_of(list._exprs.begin(), list._exprs.end(), [](Expr const& x) {
         return std::visit(expr_validator{true}, x._expr);
       });
     }
@@ -369,7 +369,8 @@ Rv<Comparison::Handle> Cmp_LiteralString::load(Config &cfg, YAML::Node const& cm
     return std::move(opt_errata);
   }
 
-  if (!TYPES[IndexFor(expr._result_type)]) {
+  auto expr_type = expr.result_type();
+  if (!TYPES[IndexFor(expr_type)]) {
     return Error(R"(Value type "{}" for comparison "{}" at {} is not supported.)"
                  , expr._result_type, key, cmp_node.Mark());
   }
@@ -546,6 +547,9 @@ Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Tuple & t) {
   auto rxm = new Cmp_RxpList{_rxp_opt};
   Cmp_RxpList::expr_visitor ev {rxm->_rxp, _rxp_opt};
   for ( auto && elt : t._exprs) {
+    if (t._result_type != STRING) {
+      return Error(R"("{}" literal must be a string.)", KEY);
+    }
     std::visit(ev, elt._expr);
   }
   return Handle { rxm };

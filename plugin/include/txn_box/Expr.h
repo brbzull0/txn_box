@@ -38,49 +38,38 @@ public:
   /// Single extractor that generates a direct view.
   /// Always a @c STRING
   struct Direct {
-    Direct(Spec const& spec) : _spec(spec) {}
+    Direct(Spec const& spec, ValueType vtype) : _spec(spec), _result_type(vtype) {}
     Spec _spec; ///< Specifier with extractor.
+    ValueType _result_type = STRING;
   };
 
   /// A composite of extractors and literals.
   struct Composite {
     /// Specifiers / elements of the parsed format string.
     std::vector<Spec> _specs;
-
-    /** Access a format element by index.
-     *
-     * @param idx Element index.
-     * @return A reference to the element.
-     */
-    Spec& operator [] (size_t idx);
-
-    /** Access a format element by index.
-     *
-     * @param idx Element index.
-     * @return A reference to the element.
-     */
-    Spec const& operator [] (size_t idx) const;
-
   };
 
-  struct Tuple {
+  struct List {
     /// Expressions which are the elements of the tuple.
     std::vector<self_type> _exprs;
   };
 
   /// Concrete types for a specific expression.
-  std::variant<std::monostate, Feature, Direct, Composite, Tuple> _expr;
+  std::variant<std::monostate, Feature, Direct, Composite, List> _expr;
   /// Enumerations for type indices.
   enum {
-    NIL = 0,
-    FEATURE = 1,
+    /// No value, uninitialized.
+    NO_EXPR = 0,
+    /// Literal value, stored in a Feature. No extraction needed.
+    LITERAL = 1,
+    /// A single extractor, directly accessed to get a Feature.
     DIRECT = 2,
+    /// String value composed of multiple literals and/or extractors.
     COMPOSITE = 3,
-    TUPLE = 4
+    /// Nested expression - this expression is a sequence of other expressions.
+    LIST = 4
   };
 
-  /// Feature type resulting from extraction of this expression.
-  ValueType _result_type = STRING;
   /// Contains an extractor the references context data.
   bool _ctx_ref_p = false;
   ///< Largest argument index. -1 => no numbered arguments.
@@ -101,33 +90,38 @@ public:
    *
    * The constructed instance will always be the literal @a f.
    */
-  Expr(Feature const& f) : _expr(f), _result_type(ValueTypeOf(f)) {}
-  Expr(Direct && d) : _expr(std::move(d)), _result_type(STRING) {}
-  Expr(Composite && comp) : _expr(std::move(comp)), _result_type(STRING) {}
+  Expr(Feature const& f) : _expr(f) {}
+
+  Expr(Composite && comp) : _expr(std::move(comp)) {}
 
   Expr(Spec const& spec, ValueType vt) {
-    if (spec._exf && spec._exf->is_direct()) {
-      _expr.emplace<DIRECT>(spec);
-    } else {
-      auto & comp { _expr.emplace<Expr::COMPOSITE>() };
-      comp._specs.push_back(spec);
-      _result_type = vt;
-      _max_arg_idx = spec._idx;
-    }
+    _expr.emplace<DIRECT>(spec, vt);
+    _max_arg_idx = spec._idx;
   }
 
-  bool is_literal() const { return _expr.index() == NIL || _expr.index() == FEATURE; }
+  ValueType result_type() const {
+    struct Visitor {
+      ValueType operator () (std::monostate const&) { return NO_VALUE; }
+      ValueType operator () (Feature const& f) { return ValueTypeOf(f); }
+      ValueType operator () (Direct const& d) { return d._result_type; }
+      ValueType operator () (Composite const&) { return STRING; }
+      ValueType operator () (List const&) { return TUPLE; }
+    };
+    return std::visit(Visitor{}, _expr);
+  }
+
+  bool is_literal() const { return _expr.index() == NIL || _expr.index() == LITERAL; }
 
   struct bwf_visitor {
     bwf_visitor(Context & ctx) : _ctx(ctx) {}
 
-    Feature operator () (std::monostate const& nil) { return NIL_FEATURE; }
+    Feature operator () (std::monostate const&) { return NIL_FEATURE; }
     Feature operator () (Feature const& f) { return f; }
     Feature operator () (Direct const& d) {
-      return static_cast<DirectFeature *>(d._spec._exf)->direct_view(_ctx, d._spec);
+      return d._spec._exf->extract(_ctx, d._spec);
     }
     Feature operator () (Composite const& comp);
-    Feature operator () (Tuple const& tuple);
+    Feature operator () (List const& list);
 
     Context& _ctx;
   };

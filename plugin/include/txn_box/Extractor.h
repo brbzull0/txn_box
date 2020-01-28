@@ -58,21 +58,6 @@ public:
    */
   virtual swoc::Rv<ValueType> validate(Config & cfg, Spec & spec, swoc::TextView const& arg) { return STRING; }
 
-  /// @defgroup Properties.
-  /// Property methods for extractors.
-  /// @{
-
-  /** The type of feature extracted.
-   *
-   * @return The extracted feature type.
-   *
-   * @note All features can be extracted as strings if needed. This type provides the ability to
-   * do more specific type processing for singleton extractions.
-   */
-//  virtual ValueType result_type() const = 0;
-
-  virtual bool is_direct() const { return false; }
-
   /** Whether the extractor uses data from the context.
    *
    * This is important for @c DIRECT features - if there is a potential reference to that value
@@ -172,29 +157,6 @@ public:
 };
 
 inline auto StringExtractor::result_type() const -> ValueType { return STRING; }
-
-/** A view of a transient string.
- *
- * This is similar to @c STRING. The difference is the view is of a string in non-plugin controlled
- * memory which may disappear or change outside of plugin control. It must therefore be treated with
- * a great deal more care than a @c literal type. This type can be converted to a @c literal by
- * localizing (making a copy of) the string in the arena.
- */
-class DirectFeature : public StringExtractor {
-public:
-
-  bool is_direct() const override { return true; }
-
-  /** Get a view of the feature.
-   *
-   * @param ctx Transaction context.
-   * @param spec Expr specifier
-   * @return A view of the feature.
-   *
-   * @a spec may contain additional information needed by the extractor.
-   */
-  virtual FeatureView direct_view(Context & ctx, Extractor::Spec const& spec) const = 0;
-};
 
 class IntegerExtractor : public Extractor {
 public:
