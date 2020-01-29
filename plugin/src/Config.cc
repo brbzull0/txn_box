@@ -278,7 +278,7 @@ Rv<Expr> Config::parse_expr_with_mods(YAML::Node node) {
 
   for ( unsigned idx = 1 ; idx < node.size() ; ++idx ) {
     auto child { node[idx] };
-    auto && [ mod, mod_errata ] {Modifier::load(*this, child, expr._result_type) };
+    auto && [ mod, mod_errata ] {Modifier::load(*this, child, expr.result_type()) };
     if (! mod_errata.is_ok()) {
       mod_errata.info(R"(While parsing feature expression at {}.)", child.Mark(), node.Mark());
       return std::move(mod_errata);
@@ -286,7 +286,6 @@ Rv<Expr> Config::parse_expr_with_mods(YAML::Node node) {
     if (_feature_state) {
       _feature_state->_type = mod->result_type();
     }
-    expr._result_type = mod->result_type();
     expr._mods.emplace_back(std::move(mod));
   }
 
@@ -346,10 +345,10 @@ Rv<Expr> Config::parse_expr(YAML::Node expr_node) {
   }
 
   Expr expr;
-  auto & tuple = expr._expr.emplace<Expr::TUPLE>();
-  tuple._exprs.reserve(xa.size());
+  auto & list = expr._expr.emplace<Expr::LIST>();
+  list._exprs.reserve(xa.size());
   for ( auto && x : xa) {
-    tuple._exprs.emplace_back(std::move(x));
+    list._exprs.emplace_back(std::move(x));
   }
   return std::move(expr);
 }

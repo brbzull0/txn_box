@@ -372,12 +372,12 @@ Rv<Comparison::Handle> Cmp_LiteralString::load(Config &cfg, YAML::Node const& cm
   auto expr_type = expr.result_type();
   if (!TYPES[IndexFor(expr_type)]) {
     return Error(R"(Value type "{}" for comparison "{}" at {} is not supported.)"
-                 , expr._result_type, key, cmp_node.Mark());
+                 , expr_type, key, cmp_node.Mark());
   }
 
-  if (TUPLE == expr._result_type && ! std::visit(expr_validator{}, expr._expr)) {
+  if (TUPLE == expr_type && ! std::visit(expr_validator{}, expr._expr)) {
     return Error(R"(Value type "{}" for comparison "{}" at {} is not supported - lists must be of string values only.)"
-                 , expr._result_type, key, cmp_node.Mark());
+                 , expr_type, key, cmp_node.Mark());
   }
 
   if (MATCH_KEY == key) {
@@ -422,7 +422,7 @@ protected:
     expr_visitor(Config & cfg, Rxp::Options opt) : _cfg(cfg), _rxp_opt(opt) {}
 
     Rv<Handle> operator() (Feature & f);
-    Rv<Handle> operator() (Expr::Tuple & t);
+    Rv<Handle> operator() (Expr::List & l);
     Rv<Handle> operator() (Expr::Direct & d);
     Rv<Handle> operator() (Expr::Composite & comp);
     template < typename T > Rv<Handle> operator() (T &) { return Error("Invalid feature type"); }
@@ -475,7 +475,7 @@ protected:
       _rxp.emplace_back(std::move(rxp));
       return {};
     }
-    Errata operator() (Expr::Tuple & t) {
+    Errata operator() (Expr::List & t) {
       return Error("Invalid type");
     }
     Errata operator() (Expr::Direct & d) {
@@ -543,11 +543,11 @@ Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Composite & comp
   return Handle(new Cmp_RxpSingle(Expr{std::move(comp)}, _rxp_opt));
 }
 
-Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::Tuple & t) {
+Rv<Comparison::Handle> Cmp_Rxp::expr_visitor::operator() (Expr::List & l) {
   auto rxm = new Cmp_RxpList{_rxp_opt};
   Cmp_RxpList::expr_visitor ev {rxm->_rxp, _rxp_opt};
-  for ( auto && elt : t._exprs) {
-    if (t._result_type != STRING) {
+  for ( auto && elt : l._exprs) {
+    if (elt.result_type() != STRING) {
       return Error(R"("{}" literal must be a string.)", KEY);
     }
     std::visit(ev, elt._expr);
@@ -724,14 +724,15 @@ protected:
 
 template < bool P(feature_type_for<INTEGER>, feature_type_for<INTEGER>) >
 Rv<Comparison::Handle> Cmp_Binary_Integer<P>::load(Config& cfg, YAML::Node const& cmp_node, TextView const& key, TextView const& arg, YAML::Node value_node) {
-  auto && [ fmt, errata ] = cfg.parse_expr(value_node);
+  auto && [ expr, errata ] = cfg.parse_expr(value_node);
   if (!errata.is_ok()) {
-    return { {}, std::move(errata.info(R"(While parsing comparison "{}" value at {}.)", KEY, value_node.Mark())) };
+    return std::move(errata.info(R"(While parsing comparison "{}" value at {}.)", KEY, value_node.Mark()));
   }
-  if (!TYPES[fmt._result_type]) {
-    return Error(R"(The type {} of the value for "{}" at {} is not one of {} as required.)", fmt._result_type, KEY, value_node.Mark(), TYPES);
+  auto expr_type = expr.result_type();
+  if (!TYPES[expr_type]) {
+    return Error(R"(The type {} of the value for "{}" at {} is not one of {} as required.)", expr_type, KEY, value_node.Mark(), TYPES);
   }
-  return { Handle(new self_type(std::move(fmt))), {} };
+  return Handle(new self_type(std::move(expr)));
 }
 
 using Cmp_eq = Cmp_Binary_Integer<eq>;

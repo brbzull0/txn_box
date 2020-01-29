@@ -171,7 +171,7 @@ bool Mod_Else::is_valid_for(ValueType ftype) const {
 }
 
 ValueType Mod_Else::result_type() const {
-  return _value._result_type;
+  return _value.result_type();
 }
 
 Errata Mod_Else::operator()(Context &ctx, Feature &feature) {

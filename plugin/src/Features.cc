@@ -157,15 +157,15 @@ BufferWriter& Ex_creq_url::format(BufferWriter &w, Spec const &spec, Context &ct
 }
 
 /* ------------------------------------------------------------------------------------ */
-class Ex_creq_url_host : public DirectFeature {
+class Ex_creq_url_host : public Extractor {
 public:
   static constexpr TextView NAME { "creq-url-host" };
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec) override;
 };
 
-FeatureView Ex_creq_url_host::direct_view(Context &ctx, Spec const&) const {
+Feature Ex_creq_url_host::extract(Context &ctx, Spec const&) {
   FeatureView zret;
   zret._direct_p = true;
   if ( auto hdr { ctx.creq_hdr() } ; hdr.is_valid()) {
@@ -177,19 +177,19 @@ FeatureView Ex_creq_url_host::direct_view(Context &ctx, Spec const&) const {
 }
 
 BufferWriter& Ex_creq_url_host::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 
 /* ------------------------------------------------------------------------------------ */
-class Ex_creq_method : public DirectFeature {
+class Ex_creq_method : public Extractor {
 public:
   static constexpr TextView NAME { "creq-method" };
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec)  override;
 };
 
-FeatureView Ex_creq_method::direct_view(Context &ctx, Spec const&) const {
+Feature Ex_creq_method::extract(Context &ctx, Spec const&) {
   FeatureView zret;
   zret._direct_p = true;
   if ( auto hdr { ctx.creq_hdr() } ; hdr.is_valid()) {
@@ -199,18 +199,18 @@ FeatureView Ex_creq_method::direct_view(Context &ctx, Spec const&) const {
 }
 
 BufferWriter& Ex_creq_method::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
-class Ex_creq_scheme : public DirectFeature {
+class Ex_creq_scheme : public Extractor {
 public:
   static constexpr TextView NAME { "creq-scheme" };
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec) override;
 };
 
-FeatureView Ex_creq_scheme::direct_view(Context &ctx, Spec const&) const {
+Feature Ex_creq_scheme::extract(Context &ctx, Spec const&) {
   FeatureView zret;
   zret._direct_p = true;
   if ( auto hdr { ctx.creq_hdr() } ; hdr.is_valid()) {
@@ -222,18 +222,18 @@ FeatureView Ex_creq_scheme::direct_view(Context &ctx, Spec const&) const {
 }
 
 BufferWriter& Ex_creq_scheme::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
-class Ex_creq_path : public DirectFeature {
+class Ex_creq_path : public Extractor {
 public:
   static constexpr TextView NAME { "creq-path" };
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec) override;
 };
 
-FeatureView Ex_creq_path::direct_view(Context &ctx, Spec const&) const {
+Feature Ex_creq_path::extract(Context &ctx, Spec const&) {
   FeatureView zret;
   zret._direct_p = true;
   if ( auto hdr { ctx.creq_hdr() } ; hdr.is_valid()) {
@@ -245,18 +245,18 @@ FeatureView Ex_creq_path::direct_view(Context &ctx, Spec const&) const {
 }
 
 BufferWriter& Ex_creq_path::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
-class Ex_creq_host : public DirectFeature {
+class Ex_creq_host : public Extractor {
 public:
   static constexpr TextView NAME { "creq-host" };
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const&) const override;
+  Feature extract(Context & ctx, Spec const&) override;
 };
 
-FeatureView Ex_creq_host::direct_view(Context &ctx, Spec const&) const {
+Feature Ex_creq_host::extract(Context &ctx, Spec const&) {
   FeatureView zret;
   zret._direct_p = true;
   if ( auto hdr { ctx.creq_hdr() } ; hdr.is_valid()) {
@@ -273,11 +273,11 @@ FeatureView Ex_creq_host::direct_view(Context &ctx, Spec const&) const {
 }
 
 BufferWriter& Ex_creq_host::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 
 /* ------------------------------------------------------------------------------------ */
-class Ex_creq_field : public DirectFeature {
+class Ex_creq_field : public Extractor {
 public:
   static constexpr TextView NAME { "creq-field" };
 
@@ -287,10 +287,10 @@ public:
   }
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec) override;
 };
 
-FeatureView Ex_creq_field::direct_view(Context &ctx, Spec const& spec) const {
+Feature Ex_creq_field::extract(Context &ctx, Spec const& spec) {
   FeatureView zret;
   zret._direct_p = true;
   zret = TextView{};
@@ -303,10 +303,10 @@ FeatureView Ex_creq_field::direct_view(Context &ctx, Spec const& spec) const {
 };
 
 BufferWriter& Ex_creq_field::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
-class ExHttpField : public DirectFeature {
+class ExHttpField : public Extractor {
 public:
   Rv<ValueType> validate(Config & cfg, Spec & spec, TextView const& arg) override {
     auto span = cfg.span<Data>(1);
@@ -322,7 +322,6 @@ public:
   }
 
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
   Feature extract(Context & ctx, Spec const& spec) override;
 
 protected:
@@ -350,10 +349,7 @@ Feature ExHttpField::extract(Context &ctx, const Spec &spec) {
   } else if (data.opt.f.by_value) {
     return NIL_FEATURE;
   }
-  return this->direct_view(ctx, spec);
-}
 
-FeatureView ExHttpField::direct_view(Context &ctx, Spec const& spec) const {
   FeatureView zret;
   zret._direct_p = true;
   zret = TextView{};
@@ -366,7 +362,7 @@ FeatureView ExHttpField::direct_view(Context &ctx, Spec const& spec) const {
 };
 
 BufferWriter& ExHttpField::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 
 // -----
@@ -459,22 +455,20 @@ BufferWriter& Ex_is_internal::format(BufferWriter &w, Extractor::Spec const &spe
 }
 /* ------------------------------------------------------------------------------------ */
 /// Extract the SNI name from the inbound session.
-class Ex_cssn_sni : public DirectFeature {
-  using self_type = Ex_cssn_sni; ///< Self reference type.
-  using super_type = DirectFeature; ///< Parent type.
+class Ex_cssn_sni : public Extractor {
 public:
   static constexpr TextView NAME { "cssn-sni" };
   /// Extract the SNI  name from the inbound session.
   BufferWriter& format(BufferWriter& w, Spec const& spec, Context& ctx) override;
-  FeatureView direct_view(Context & ctx, Spec const& spec) const override;
+  Feature extract(Context & ctx, Spec const& spec) override;
 };
 
-FeatureView Ex_cssn_sni::direct_view(Context & ctx, Spec const& spec) const {
+Feature Ex_cssn_sni::extract(Context & ctx, Spec const& spec) {
   return ctx._txn.ssn().inbound_sni();
 }
 
 BufferWriter& Ex_cssn_sni::format(BufferWriter &w, Spec const &spec, Context &ctx) {
-  return bwformat(w, spec, this->direct_view(ctx, spec));
+  return bwformat(w, spec, this->extract(ctx, spec));
 }
 /* ------------------------------------------------------------------------------------ */
 /// Client Session protocol information.

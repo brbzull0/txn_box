@@ -91,7 +91,7 @@ public:
    * The constructed instance will always be the literal @a f.
    */
   Expr(Feature const& f) : _expr(f) {}
-
+  Expr(Direct && d) : _expr(std::move(d)) {}
   Expr(Composite && comp) : _expr(std::move(comp)) {}
 
   Expr(Spec const& spec, ValueType vt) {
@@ -107,7 +107,7 @@ public:
       ValueType operator () (Composite const&) { return STRING; }
       ValueType operator () (List const&) { return TUPLE; }
     };
-    return std::visit(Visitor{}, _expr);
+    return _mods.empty() ? std::visit(Visitor{}, _expr) : _mods.back()->result_type();
   }
 
   bool is_literal() const { return _expr.index() == NIL || _expr.index() == LITERAL; }
